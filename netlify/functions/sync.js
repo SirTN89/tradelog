@@ -1,24 +1,22 @@
 import { getStore } from '@netlify/blobs';
 
-export default async (req, context) => {
-  const CORS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
-  };
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+};
 
-  // Preflight
-  if(req.method === 'OPTIONS'){
+export default async (req, context) => {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS });
   }
 
   try {
     const store = getStore({ name: 'tradelog', consistency: 'strong' });
 
-    // GET — load data
-    if(req.method === 'GET'){
+    if (req.method === 'GET') {
       const data = await store.get('tradelog-data', { type: 'json' });
-      if(data === null){
+      if (data === null) {
         return new Response(JSON.stringify({ error: 'No data yet' }), {
           status: 404,
           headers: { ...CORS, 'Content-Type': 'application/json' }
@@ -30,8 +28,7 @@ export default async (req, context) => {
       });
     }
 
-    // PUT — save data
-    if(req.method === 'PUT'){
+    if (req.method === 'PUT') {
       const body = await req.json();
       await store.setJSON('tradelog-data', body);
       return new Response(JSON.stringify({ ok: true }), {
@@ -42,7 +39,7 @@ export default async (req, context) => {
 
     return new Response('Method not allowed', { status: 405, headers: CORS });
 
-  } catch(err) {
+  } catch (err) {
     console.error('Sync error:', err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
@@ -51,6 +48,4 @@ export default async (req, context) => {
   }
 };
 
-export const config = {
-  path: '/api/sync'
-};
+export const config = { path: '/api/sync' };

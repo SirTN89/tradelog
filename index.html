@@ -169,6 +169,10 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
 .jl-chart-placeholder .ph-icon{font-size:40px;opacity:.3}
 .jl-chart-placeholder p{font-family:var(--font-mono);font-size:12px}
 .jl-bottom-bar{background:var(--surface);border-top:0.5px solid var(--border2);padding:10px 14px;flex-shrink:0}
+.jl-resize-handle{height:6px;background:var(--surface);border-top:0.5px solid var(--border2);cursor:ns-resize;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.jl-resize-handle:hover,.jl-resize-handle.dragging{background:var(--accent-dim)}
+.jl-resize-handle::after{content:'';display:block;width:32px;height:2px;border-radius:2px;background:var(--border2);transition:background .15s}
+.jl-resize-handle:hover::after,.jl-resize-handle.dragging::after{background:var(--accent)}
 .jl-bottom-tabs{display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:10px}
 .jl-bottom-tab{font-family:var(--font-sans);font-size:12px;padding:6px 14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:none;border-left:none;border-right:none;border-top:none}
 .jl-bottom-tab.active{color:var(--text);border-bottom-color:var(--green)}
@@ -219,16 +223,16 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
 .dp-calendar.open{display:block}
 .dp-cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .dp-cal-header span{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text)}
-.dp-cal-nav{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 6px;border-radius:4px;transition:color .15s}
-.dp-cal-nav:hover{color:var(--text)}
+.dp-cal-nav{background:var(--surface2);border:0.5px solid var(--border2);color:var(--text);cursor:pointer;font-size:15px;padding:2px 8px;border-radius:4px;transition:background .15s}
+.dp-cal-nav:hover{background:var(--accent-dim);border-color:var(--accent)}
 .dp-cal-dow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px}
-.dp-cal-dow span{font-family:var(--font-mono);font-size:8px;color:var(--muted);text-align:center;padding:2px 0}
+.dp-cal-dow span{font-family:var(--font-mono);font-size:8px;color:var(--muted);text-align:center;padding:2px 0;text-transform:uppercase;letter-spacing:.06em}
 .dp-cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.dp-day{font-family:var(--font-mono);font-size:10px;color:var(--muted);text-align:center;padding:5px 2px;border-radius:4px;cursor:pointer;transition:background .12s,color .12s}
-.dp-day:hover{background:var(--surface2);color:var(--text)}
-.dp-day.today{color:var(--accent);font-weight:600}
-.dp-day.selected{background:var(--accent);color:#fff !important}
-.dp-day.empty{cursor:default;pointer-events:none}
+.dp-day{font-family:var(--font-mono);font-size:10px;color:var(--text);text-align:center;padding:5px 2px;border-radius:4px;cursor:pointer;transition:background .12s,color .12s;background:var(--surface2)}
+.dp-day:hover{background:var(--accent-dim);color:var(--accent)}
+.dp-day.today{color:var(--accent);font-weight:600;border:0.5px solid var(--accent)}
+.dp-day.selected{background:var(--accent);color:#fff !important;font-weight:600}
+.dp-day.empty{cursor:default;pointer-events:none;background:transparent}
 /* ── LIGHTWEIGHT CHART ── */
 .lw-chart-container{width:100%;height:100%;position:relative}
 .lw-chart-msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);pointer-events:none}
@@ -354,6 +358,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
 @media(max-width:1000px){.row2{grid-template-columns:1fr}.row3{grid-template-columns:1fr}.row4{grid-template-columns:1fr}.stat-row{grid-template-columns:repeat(3,1fr)}.journal-layout{grid-template-columns:1fr}}
 @media(max-width:600px){.stat-row{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
+
 </head>
 <body>
 
@@ -389,9 +394,9 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
     <div id="sync-pill" onclick="manualSync()" title="Cloud sync status" style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:10px;padding:4px 10px;border-radius:20px;background:var(--surface2);border:0.5px solid var(--border);cursor:pointer;transition:border-color .15s;white-space:nowrap;color:var(--muted)">
       <svg id="sync-icon" width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M9.5 5.5A4 4 0 1 1 5.5 1.5" stroke="var(--muted)" stroke-width="1.3" stroke-linecap="round"/><polyline points="7.5,0 9.5,1.5 8,3.5" fill="none" stroke="var(--muted)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span id="sync-label">No sync</span>
-    </div>
-  </div>
+    </div></div>
 </nav>
+
 
 <!-- ══════════════════════════════════════════ -->
 <!-- PAGE: DASHBOARD                            -->
@@ -523,9 +528,9 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
         </div>
         <span class="jl-chart-sym" id="jl-chart-sym">—</span>
         <div class="jl-tf-group" id="chart-tf-group">
-          <button class="jl-tf-btn" onclick="setTF('1',this)">M1</button>
+          <button class="jl-tf-btn active" onclick="setTF('1',this)">M1</button>
           <button class="jl-tf-btn" onclick="setTF('3',this)">M3</button>
-          <button class="jl-tf-btn active" onclick="setTF('5',this)">M5</button>
+          <button class="jl-tf-btn" onclick="setTF('5',this)">M5</button>
         </div>
         <div style="display:flex;gap:4px;margin-left:8px" id="chart-type-group">
           <!-- Candlestick icon button — matches TradingView: tall left candle, shorter right candle, both with top+bottom wicks -->
@@ -557,7 +562,34 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
             </svg>
           </button>
         </div>
-        <div style="margin-left:auto;font-family:var(--font-mono);font-size:9px;color:var(--muted)">Right-click → set Entry / SL / Exit</div>
+        <!-- Visibility toggle icons: Lines + Area -->
+        <div style="display:flex;gap:4px;margin-left:4px">
+          <button id="btn-toggle-lines" onclick="toggleChartLines()" title="Toggle price lines &amp; markers"
+            style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;background:var(--surface2);border:0.5px solid var(--border2);border-radius:5px;cursor:pointer;transition:all .15s">
+            <svg id="icon-lines" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <line x1="1" y1="4" x2="13" y2="4" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+              <line x1="1" y1="8" x2="13" y2="8" stroke="white" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="2 2"/>
+              <line x1="1" y1="12" x2="13" y2="12" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button id="btn-toggle-area" onclick="toggleChartArea()" title="Toggle shaded area"
+            style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;background:var(--surface2);border:0.5px solid var(--border2);border-radius:5px;cursor:pointer;transition:all .15s">
+            <svg id="icon-area" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M1 11 L4 6 L7 8 L10 3 L13 5 L13 13 L1 13 Z" fill="rgba(255,255,255,0.25)" stroke="white" stroke-width="1.2" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <!-- Load CSV from TradingView -->
+          <label id="csv-chart-label" title="Load TradingView CSV (Download Chart Data)" style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:10px;padding:4px 9px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:5px;cursor:pointer;color:var(--muted);transition:border-color .15s;white-space:nowrap" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M1 10h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Load CSV
+            <input type="file" id="chart-csv-input" accept=".csv" style="display:none" onchange="loadChartCSV(this)">
+          </label>
+          <span id="csv-chart-status" style="font-family:var(--font-mono);font-size:9px;color:var(--muted)"></span>
+          <span id="csv-tz-label" style="font-family:var(--font-mono);font-size:9px;color:var(--muted);padding:2px 6px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:4px;display:none"></span>
+          <span style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">Right-click → set Entry / SL / Exit</span>
+        </div>
       </div>
       <!-- Chart view -->
       <div class="jl-chart-frame" id="jl-chart-frame" style="display:flex;flex-direction:column;flex:1;position:relative;min-height:0">
@@ -583,7 +615,8 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
         <div class="ctx-sep"></div>
         <div class="ctx-item" onclick="ctxClearLines()" style="color:var(--red)">✕ Clear all lines</div>
       </div>
-      <div class="jl-bottom-bar">
+      <div class="jl-resize-handle" id="jl-resize-handle" title="Drag to resize chart"></div>
+      <div class="jl-bottom-bar" id="jl-bottom-bar">
         <div class="jl-bottom-tabs">
           <button class="jl-bottom-tab active" onclick="setBottomTab('notes',this)">Notes</button>
           <button class="jl-bottom-tab" onclick="setBottomTab('mistakes',this)">Mistakes</button>
@@ -631,9 +664,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
           </div>
           <div style="margin-top:8px">
             <div class="k" style="margin-bottom:4px">Account</div>
-            <select id="ps-acct-select" onchange="updateTradeAccount(this.value)" style="width:100%;background:var(--surface);border:0.5px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:5px 8px;outline:none;cursor:pointer">
-              <option value="Default">Default</option>
-            </select>
+            <div id="ps-acct-chips" style="display:flex;flex-wrap:wrap;gap:4px;min-height:26px"></div>
           </div>
         </div>
 
@@ -686,28 +717,39 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
           <div class="jl-pnl-big" id="jd-pnl" style="font-size:22px">—</div>
           <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px" id="jd-pnl-sub">—</div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px">
-            <div class="jl-kv"><div class="k">R multiple</div><div class="v" id="jd-rmult">—</div></div>
+            <div class="jl-kv"><div class="k">R:R (entry→exit)</div><div class="v" id="jd-rmult">—</div></div>
+            <div class="jl-kv"><div class="k">R:R (w/ TPs)</div><div class="v" id="jd-rmult-tp">—</div></div>
             <div class="jl-kv"><div class="k">Gain %</div><div class="v" id="jd-gain-pct">—</div></div>
-            <div class="jl-kv"><div class="k">P&amp;L $</div><div class="v" id="jd-pnl-sm">—</div></div>
           </div>
         </div>
 
         <!-- ACCOUNT IMPACT -->
         <div style="padding:10px 14px;border-bottom:0.5px solid var(--border)">
-          <div class="jl-section-title" style="color:#f0c05c;margin-bottom:6px">■ Account Impact</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="jl-section-title" style="color:#f0c05c;margin:0">■ Account Impact</div>
+            <div id="jd-impact-acct-tabs" style="display:flex;gap:4px"></div>
+          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-            <div class="jl-kv"><div class="k">P&amp;L $</div><div class="v" id="jd-gross">—</div></div>
+            <div class="jl-kv"><div class="k">Gross P&amp;L</div><div class="v" id="jd-gross">—</div></div>
             <div class="jl-kv"><div class="k">Bal. after ©</div><div class="v" id="jd-bal-after">—</div></div>
             <div class="jl-kv"><div class="k">Acct %</div><div class="v" id="jd-acct-pct">—</div></div>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px">
-            <div class="jl-kv"><div class="k">Hold</div><div class="v" id="jd-hold">—</div></div>
-            <div class="jl-kv"><div class="k">In Profit</div><div class="v g" id="jd-in-profit">—</div></div>
-            <div class="jl-kv"><div class="k">In DD</div><div class="v r" id="jd-in-dd">—</div></div>
+            <div class="jl-kv">
+              <div class="k">Fees</div>
+              <div style="display:flex;align-items:center;gap:4px">
+                <div class="v r" id="jd-fees-display">—</div>
+                <button onclick="editFeesInline()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;font-family:var(--font-mono);padding:0" title="Edit fees">✎</button>
+              </div>
+            </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
-            <div class="jl-kv"><div class="k">MFE (max run-up)</div><div class="v g" id="jd-mfe">—</div></div>
-            <div class="jl-kv"><div class="k">MFE (max run-up %)</div><div class="v g" id="jd-mfe-pct">—</div></div>
+            <div class="jl-kv"><div class="k">Net P&amp;L</div><div class="v" id="jd-net">—</div></div>
+            <div class="jl-kv"><div class="k">Hold</div><div class="v" id="jd-hold">—</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:6px">
+            <div class="jl-kv"><div class="k">In Profit</div><div class="v g" id="jd-in-profit">—</div></div>
+            <div class="jl-kv"><div class="k">In DD</div><div class="v r" id="jd-in-dd">—</div></div>
+            <div class="jl-kv"><div class="k">MFE (run-up)</div><div class="v g" id="jd-mfe">—</div></div>
+            <div class="jl-kv"><div class="k">MAE (drawdown)</div><div class="v r" id="jd-mae">—</div></div>
           </div>
         </div>
 
@@ -737,8 +779,6 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
         <div style="padding:10px 14px">
           <div class="jl-section-title" style="color:var(--muted);margin-bottom:4px">■ Setup / Model</div>
           <div style="font-family:var(--font-mono);font-size:12px;color:var(--text)" id="jd-setup">—</div>
-          <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:4px">Fees</div>
-          <div style="font-family:var(--font-mono);font-size:11px" id="jd-fees">—</div>
         </div>
 
       </div>
@@ -886,7 +926,6 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
       <button class="log-modal-close" onclick="closeSettings()">&#10005;</button>
     </div>
     <div class="settings-body">
-
       <!-- Cloud Sync — Netlify -->
       <div class="settings-section">
         <div class="settings-section-title" style="color:#a78bfa">■ Cloud Sync</div>
@@ -901,11 +940,12 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
       <!-- Accounts management -->
       <div class="settings-section">
         <div class="settings-section-title" style="color:#5b8def">■ Trading Accounts</div>
-        <p style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px">Create accounts with initial balance. Use them in +Log and trade stats.</p>
+        <p style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px">Set initial balance and start date. All trades assigned to this account will update the running balance.</p>
         <div class="settings-list" id="settings-accounts-list"></div>
-        <div style="display:grid;grid-template-columns:1fr 100px;gap:8px;margin-top:8px">
+        <div style="display:grid;grid-template-columns:1fr 90px 110px;gap:8px;margin-top:8px">
           <input type="text" id="settings-acct-name" class="log-input" placeholder="Account name…">
           <input type="number" id="settings-acct-balance" class="log-input" placeholder="Balance $">
+          <input type="date" id="settings-acct-date" class="log-input" title="Initial balance date">
         </div>
         <div style="margin-top:6px">
           <button class="btn primary sm" onclick="addSettingAccount()">+ Add account</button>
@@ -923,27 +963,6 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
               <option value="5" selected>5m</option>
               <option value="15">15m</option>
               <option value="60">1H</option>
-              <option value="D">D</option>
-            </select>
-          </div>
-          <div class="log-field">
-            <label style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Days of data</label>
-            <select class="log-input" id="s-days" onchange="saveChartSettings()">
-              <option value="1">1 day</option>
-              <option value="3">3 days</option>
-              <option value="4" selected>4 days</option>
-              <option value="5">5 days</option>
-              <option value="10">10 days</option>
-            </select>
-          </div>
-          <div class="log-field">
-            <label style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Timezone offset (hours)</label>
-            <select class="log-input" id="s-tz" onchange="saveChartSettings()">
-              <option value="-5">UTC-5 (EST)</option>
-              <option value="-4" selected>UTC-4 (EDT standard)</option>
-              <option value="-3">UTC-3</option>
-              <option value="0">UTC</option>
-              <option value="1">UTC+1</option>
             </select>
           </div>
           <div class="log-field">
@@ -1002,6 +1021,22 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
         <div class="settings-add-row">
           <input type="text" id="settings-eodtag-input" placeholder="Add EOD tag…" onkeydown="if(event.key==='Enter')addSettingItem('eodTags','settings-eodtag-input')">
           <button class="btn sm primary" onclick="addSettingItem('eodTags','settings-eodtag-input')">Add</button>
+        </div>
+      </div>
+
+      <!-- Break-Even Setting -->
+      <div class="settings-section">
+        <div class="settings-section-title" style="color:#f0c05c">■ Break-Even Threshold</div>
+        <p style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px">Trades within this range of zero are counted as Break-Even instead of Win or Loss.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="log-field">
+            <label style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">$ Threshold</label>
+            <input type="number" id="s-be-dollars" class="log-input" placeholder="e.g. 10" min="0" oninput="saveBeSettings()">
+          </div>
+          <div class="log-field">
+            <label style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Points Threshold</label>
+            <input type="number" id="s-be-points" class="log-input" placeholder="e.g. 2" min="0" step="0.25" oninput="saveBeSettings()">
+          </div>
         </div>
       </div>
 
@@ -1226,7 +1261,7 @@ const now=new Date();
 let calYear=now.getFullYear(),calMonth=now.getMonth();
 let cumulInst=null,dailyInst=null;
 let selectedTradeId=null;
-let currentTF='5';
+let currentTF='1';
 let currentBottomTab='notes';
 let jFilterActive='ALL';
 let notesSaveTimer=null;
@@ -1577,20 +1612,43 @@ function renderJournalList(){
     const grpPnl=gtrades.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
     html+=`<div class="jl-group-header">${grp} &nbsp;<span style="color:${grpPnl>=0?'var(--green)':'var(--red)'}">${grpPnl>=0?'+':''}${fm(grpPnl,0)}</span> &nbsp;<span style="color:var(--muted)">${gtrades.length} trades</span></div>`;
     gtrades.forEach(t=>{
-      const p=parseFloat(t.pnl)||0,w=p>0;
+      const p=parseFloat(t.pnl)||0;
+      const outcome=getOutcome(p);
+      const w=outcome==='win';
+      const be=outcome==='be';
       const sel=t.id===selectedTradeId?' selected':'';
+      // Format date as "July 16, 2026"
+      const [dy,dm,dd]=t.date.split('-').map(Number);
+      const fmtDate=`${MONTHS[dm-1]} ${dd}, ${dy}`;
+      // Entry time from entryTime timestamp
+      let entryTimeStr='';
+      if(t.entryTime){
+        const d=new Date(t.entryTime*1000);
+        entryTimeStr=` · ${d.getUTCHours().toString().padStart(2,'0')}:${d.getUTCMinutes().toString().padStart(2,'0')}`;
+      }
+      // R:R
+      const entry=parseFloat(t.entry)||0;
+      const exit=parseFloat(t.exit)||0;
+      const sl=parseFloat(t.sl)||0;
+      const dir=(t.side||'Long')==='Long'?1:-1;
+      const exitPts=entry&&exit?(exit-entry)*dir:null;
+      const riskPts=entry&&sl?Math.abs(entry-sl):null;
+      const rr=exitPts!==null&&riskPts?exitPts/riskPts:null;
+      const rrStr=rr!==null?(rr>=0?'+':'')+rr.toFixed(2)+'R':'—';
+      // Side only if both entry and exit set
+      const showSide=entry&&exit;
       html+=`<div class="jl-trade-row${sel}" onclick="selectJournalTrade('${t.id}')">
-        <div>
-          <div class="jl-trade-sym">${t.symbol}<span class="sym-badge">${t.qty||1}</span></div>
-          <div class="jl-trade-meta">
-            <span class="jl-trade-date">${t.date} &nbsp;${t.duration||''}</span>
-            <span class="jl-trade-side ${(t.side||'Long').toLowerCase()}">${t.side||'Long'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span class="jl-trade-sym">${t.symbol}<span class="sym-badge">${t.qty||1}</span></span>
+            ${showSide?`<span class="jl-trade-side ${(t.side||'Long').toLowerCase()}">${t.side||'Long'}</span>`:''}
           </div>
+          <div class="jl-trade-date">${fmtDate}${entryTimeStr}</div>
         </div>
-        <div style="margin-left:auto;text-align:right;display:flex;align-items:center;gap:8px">
+        <div style="text-align:right;display:flex;align-items:center;gap:8px">
           <div>
-            <div class="jl-trade-pnl ${w?'g':'r'}">${w?'+':''}${fm(p)}</div>
-            <div class="jl-trade-r">${t.account||'Default'}</div>
+            <div class="jl-trade-pnl ${be?'':''}${w?'g':be?'':'r'}" style="${be?'color:#f0c05c':''}">${p!==0?(p>=0?'+':'')+fm(p):'—'}</div>
+            <div class="jl-trade-r" style="color:${rr!==null?(rr>=0?'var(--green)':'var(--red)'):'var(--muted)'}">${rrStr}</div>
           </div>
           <button onclick="event.stopPropagation();quickDeleteTrade('${t.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;line-height:1;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'" title="Delete trade">🗑</button>
         </div>
@@ -1603,6 +1661,8 @@ function renderJournalList(){
 function selectJournalTrade(id){
   const wasSelected = selectedTradeId === id;
   selectedTradeId=id;
+  // Reset visibility when switching trades
+  if(!wasSelected){ _linesVisible=true; _areaVisible=true; }
   const t=trades.find(x=>x.id===id);
   if(!t)return;
   renderJournalList();
@@ -1623,11 +1683,11 @@ let currentCandleType='candle';
 let lwPriceLines={entry:null,sl:null,exit:null};
 function loadChartSettings(applyGlobals=false){
   const s=loadSettings();
-  const cs=s.chart||{tf:'5',days:4,tz:-4,candle:'candle',colorUp:'#22c98a',colorDown:'#f05c5c'};
+  const cs=s.chart||{tf:'1',candle:'candle',colorUp:'#22c98a',colorDown:'#f05c5c'};
   // Only restore TF/candle from saved settings on initial page load,
   // not when re-rendering after a button press (those already updated the globals).
   if(applyGlobals){
-    currentTF=cs.tf||'5';
+    currentTF=cs.tf||'1';
     currentCandleType=cs.candle||'candle';
   }
   return cs;
@@ -1636,9 +1696,7 @@ function loadChartSettings(applyGlobals=false){
 function saveChartSettings(){
   const s=loadSettings();
   s.chart={
-    tf:document.getElementById('s-tf')?.value||'5',
-    days:parseInt(document.getElementById('s-days')?.value)||4,
-    tz:parseInt(document.getElementById('s-tz')?.value)||-4,
+    tf:document.getElementById('s-tf')?.value||'1',
     candle:document.getElementById('s-candle')?.value||'candle',
     colorUp:document.getElementById('s-color-up')?.value||'#22c98a',
     colorDown:document.getElementById('s-color-down')?.value||'#f05c5c',
@@ -1652,11 +1710,9 @@ function saveChartSettings(){
 
 function openSettings(){
   const s=loadSettings();
-  const cs=s.chart||{tf:'5',days:4,tz:-4,candle:'candle',colorUp:'#22c98a',colorDown:'#f05c5c'};
+  const cs=s.chart||{tf:'1',candle:'candle',colorUp:'#22c98a',colorDown:'#f05c5c'};
   const setEl=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v;};
-  setEl('s-tf',cs.tf||'5');
-  setEl('s-days',cs.days||4);
-  setEl('s-tz',cs.tz!=null?cs.tz:-4);
+  setEl('s-tf',cs.tf||'1');
   setEl('s-candle',cs.candle||'candle');
   setEl('s-color-up',cs.colorUp||'#d4d4d4');
   setEl('s-color-down',cs.colorDown||'#555566');
@@ -1668,6 +1724,7 @@ function openSettings(){
   // Show sync status in settings
   const nst=document.getElementById('netlify-sync-status');
   if(nst){ nst.textContent=document.getElementById('sync-label').textContent; }
+  loadBeSettings();
   document.getElementById('settings-modal-bg').classList.add('open');
 }
 function closeSettings(){document.getElementById('settings-modal-bg').classList.remove('open');}
@@ -1719,8 +1776,8 @@ function loadTradingViewChart(t){
   const cs=loadChartSettings();
   const colorUp=cs.colorUp||'#22c98a';
   const colorDown=cs.colorDown||'#f05c5c';
-  const tzOffset=parseInt(cs.tz??-4);
-  const daysBack=parseInt(cs.days)||3;
+  
+  
   // Create chart
   const isLight=document.documentElement.getAttribute('data-theme')==='light';
   const chartBg=isLight?'#ffffff':'#0d0f12';
@@ -1737,6 +1794,7 @@ function loadTradingViewChart(t){
     },
     rightPriceScale:{borderColor:'rgba(255,255,255,0.07)',textColor:'#6b7280'},
     timeScale:{borderColor:'rgba(255,255,255,0.07)',timeVisible:true,secondsVisible:false,rightOffset:12,barSpacing:currentTF==='1'?4:currentTF==='3'?5:6},
+    localization:{timeFormatter:ts=>{const d=new Date(ts*1000);return d.getUTCHours().toString().padStart(2,'0')+':'+d.getUTCMinutes().toString().padStart(2,'0');}},
     handleScroll:{mouseWheel:true,pressedMouseMove:true},
     handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:true},
   });
@@ -1745,9 +1803,30 @@ function loadTradingViewChart(t){
     if(lwChart&&tvContainer.clientWidth>0)lwChart.applyOptions({width:tvContainer.clientWidth,height:tvContainer.clientHeight||400});
   });
   window._lwResizeObs.observe(tvContainer);
-  // Generate candles
-  const candles=generateDemoCandles(t,daysBack,1,tzOffset);
-  lwAllCandles=candles;
+  // Load candles — CSV only, no synthetic
+  const minuteTF = parseInt(currentTF)||1;
+  const csvCandles = getCsvCandles(t.id, minuteTF);
+  // Update CSV status label
+  const st=document.getElementById('csv-chart-status');
+  if(!csvCandles){
+    // No CSV loaded — destroy chart and show instruction message
+    if(window._lwResizeObs){window._lwResizeObs.disconnect();window._lwResizeObs=null;}
+    try{lwChart.remove();}catch(e){}
+    lwChart=null;lwCandleSeries=null;lwAllCandles=[];
+    tvContainer.style.display='none';
+    if(msgEl){
+      msgEl.style.display='flex';
+      msgEl.innerHTML=`<div class="ph-icon">📥</div>
+        <p>No chart data for this trade.<br><br>
+        In TradingView, open <strong style="color:var(--text)">${t.symbol}</strong> on <strong style="color:var(--text)">M1</strong><br>
+        then click the layout menu → <strong style="color:var(--text)">Download chart data</strong><br>
+        and load the CSV using the button above.</p>`;
+    }
+    if(st){ st.textContent='No CSV'; st.style.color='var(--muted)'; }
+    return;
+  }
+  lwAllCandles=csvCandles;
+  if(st){ st.textContent=`✓ ${csvCandles.length} bars`; st.style.color='var(--green)'; }
   // Create series
   const type=currentCandleType;
   if(type==='line'){
@@ -1763,7 +1842,7 @@ function loadTradingViewChart(t){
       wickUpColor:colorUp+'bb',wickDownColor:colorDown+'bb',
     });
   }
-  lwCandleSeries.setData(candles);
+  lwCandleSeries.setData(csvCandles);
   // Scroll so trade day is visible (roughly 2/3 from left)
   lwChart.timeScale().fitContent();
   // Draw lines + markers from saved trade data
@@ -2664,6 +2743,10 @@ function renderDpCalendar(){
     const isToday=ds===todayStr;
     html+=`<div class="dp-day${isSel?' selected':isToday?' today':''}" onclick="dpSelect('${ds}')">${d}</div>`;
   }
+  // Fill trailing cells so last row is complete (no phantom 7th row)
+  const total=firstDow+dim;
+  const trailing=(7-total%7)%7;
+  for(let i=0;i<trailing;i++) html+=`<div class="dp-day empty"></div>`;
   document.getElementById('dp-cal-days').innerHTML=html;
 }
 
@@ -2781,13 +2864,26 @@ function submitLogTrade(){
 }
 
 // ── renderTradeDetail (updated) ───────────────────────────────────────────────
+
+// Returns 'win', 'loss', or 'be' based on P&L and BE threshold settings
+function getOutcome(p){
+  if(p === 0) return 'be';
+  const s = loadSettings();
+  const be = s.be || { dollars: 0, points: 0 };
+  const beD = parseFloat(be.dollars) || 0;
+  if(beD > 0 && Math.abs(p) <= beD) return 'be';
+  return p > 0 ? 'win' : 'loss';
+}
+
 function renderTradeDetail(t){
   document.getElementById('jl-detail-none').style.display='none';
   document.getElementById('jl-detail-content').style.display='flex';
   const p=parseFloat(t.pnl)||0;
   const fees=parseFloat(t.fees)||0;
   const net=p-fees;
-  const w=p>0;
+  const outcome=getOutcome(p);
+  const w=outcome==='win';
+  const be=outcome==='be';
   const entry=parseFloat(t.entry)||0;
   const exit=parseFloat(t.exit)||0;
   const sl=parseFloat(t.sl)||0;
@@ -2808,8 +2904,11 @@ function renderTradeDetail(t){
   document.getElementById('jd-date').textContent=t.date+(t.duration?` · ${t.duration}`:'');
   // Outcome badge top right
   const obEl=document.getElementById('jd-outcome-badge');
-  if(p!==0){obEl.innerHTML=`<span class="tag ${w?'win':'loss'}" style="font-size:9px">${w?'WIN (TP FIRST)':'LOSS (SL FIRST)'}</span>`;}
-  else{obEl.textContent='';}
+  if(p!==0||be){
+    const label=be?'BREAK-EVEN':w?'WIN (TP FIRST)':'LOSS (SL FIRST)';
+    const cls=be?'be':w?'win':'loss';
+    obEl.innerHTML=`<span class="tag ${cls}" style="font-size:9px;${be?'background:rgba(240,192,92,0.15);color:#f0c05c;border-color:#f0c05c':''}">${label}</span>`;
+  } else { obEl.textContent=''; }
   // Tags
   const tagsEl=document.getElementById('jd-tags');
   const allTags=[...(t.tags||[]),t.setup].filter(Boolean);
@@ -2823,10 +2922,12 @@ function renderTradeDetail(t){
     const input=document.querySelector('#jd-qty-val-wrap input,#jd-detail-content input[type="number"]');
     if(input){const span=document.createElement('span');span.id='jd-qty-val';span.textContent=qty;input.replaceWith(span);}
   }
-  document.getElementById('jd-acct-badge').textContent=t.account||'Default';
-  // Sync position size account selector
-  const psAs=document.getElementById('ps-acct-select');
-  if(psAs){populateAccountDropdowns();psAs.value=t.account||'Default';}
+  // Account badge — show all accounts if multiple
+  const acctArr = Array.isArray(t.account) ? t.account : [t.account||'Default'];
+  document.getElementById('jd-acct-badge').textContent = acctArr.join(', ');
+  // jd-acct set above via acctArr
+  // Render multi-account chip selector
+  renderAccountChips(t);
   document.getElementById('ps-pt-val').textContent=cfg.ptVal?`$${cfg.ptVal}`:'—';
   const psRisk=dollarRisk?fm(dollarRisk):'—';
   document.getElementById('ps-dollar-risk').textContent=psRisk;
@@ -2834,9 +2935,11 @@ function renderTradeDetail(t){
   document.getElementById('ps-dollar-risk-big').className='v r'+(dollarRisk?' ':'');
   // P&L
   const pnlEl=document.getElementById('jd-pnl');
-  pnlEl.textContent=(w?'+':'')+fm(p);
-  pnlEl.className='jl-pnl-big '+(w?'g':'r');
-  document.getElementById('jd-pnl-sub').textContent=exitPts!==null?`${exitPts>=0?'+':''}${exitPts.toFixed(2)} pts · ${w?'WIN':'LOSS'}`:(p!==0?w?'WIN':'LOSS':'Set entry & exit');
+  pnlEl.textContent=(p>=0?'+':'')+fm(p);
+  pnlEl.className='jl-pnl-big '+(be?'':'')+(w?'g':be?'':'r');
+  if(be) pnlEl.style.color='#f0c05c'; else pnlEl.style.color='';
+  const outcomeLabel=be?'BREAK-EVEN':w?'WIN':'LOSS';
+  document.getElementById('jd-pnl-sub').textContent=exitPts!==null?`${exitPts>=0?'+':''}${exitPts.toFixed(2)} pts · ${outcomeLabel}`:(p!==0?outcomeLabel:'Set entry & exit');
   // Entry/Stop/Exit
   document.getElementById('jd-entry').textContent=entry||'—';
   document.getElementById('jd-sl').textContent=sl||'—';
@@ -2848,52 +2951,95 @@ function renderTradeDetail(t){
   document.getElementById('jd-qty').textContent=qty;
   document.getElementById('jd-pt-val').textContent=cfg.ptVal?`$${cfg.ptVal}`:'—';
   document.getElementById('jd-dollar-risk').textContent=dollarRisk?fm(dollarRisk):'—';
-  document.getElementById('jd-acct').textContent=t.account||'Default';
-  // Realized at exit — R-multiple, gain%, P&L
-  const rMult=rr!==null?(w?'+':'-')+Math.abs(rr).toFixed(2)+'R':'—';
+  document.getElementById('jd-acct').textContent=acctArr.join(', ');
+
   const sv=(id,v,cls)=>{const e=document.getElementById(id);if(!e)return;e.textContent=v;if(cls)e.className='v '+cls;};
-  sv('jd-rmult',rMult,rr!==null?(w?'g':'r'):'');
-  // Gain % = pnl / (entry * qty * ptVal) * 100 (rough account % proxy)
+
+  // ── R:R split: pure entry→exit vs weighted with TPs ─────────────────────
+  const rrPure = rr; // entry→exit ignoring TPs
+  let rrWithTp = null;
+  const tps = t.tpTargets||[];
+  if(tps.length && entry && sl && riskPts){
+    // Weighted average exit price across TPs + remainder at exit
+    const totalQty=qty;
+    let tpQtyUsed=0, weightedExit=0;
+    tps.forEach(tp=>{ const q=parseInt(tp.qty)||0; tpQtyUsed+=q; weightedExit+=parseFloat(tp.price||0)*q; });
+    const remQty=Math.max(0,totalQty-tpQtyUsed);
+    if(exit&&remQty>0) weightedExit+=exit*remQty;
+    const avgExit=weightedExit/Math.max(totalQty,1);
+    const avgExitPts=(avgExit-entry)*dir;
+    rrWithTp=riskPts?avgExitPts/riskPts:null;
+  }
+  const rrPureStr = rrPure!==null ? (rrPure>=0?'+':'')+rrPure.toFixed(2)+'R' : '—';
+  const rrTpStr   = rrWithTp!==null ? (rrWithTp>=0?'+':'')+rrWithTp.toFixed(2)+'R' : (rrPure!==null?rrPureStr:'—');
+  sv('jd-rmult', rrPureStr, rrPure!==null?(rrPure>=0?'g':'r'):'');
+  sv('jd-rmult-tp', rrTpStr, rrWithTp!==null?(rrWithTp>=0?'g':'r'):rrPure!==null?(rrPure>=0?'g':'r'):'');
+
+  // Gain %
   const gainPct=dollarRisk&&entry?((p/dollarRisk)*100).toFixed(2)+'%':'—';
   sv('jd-gain-pct',gainPct,(p>=0?'g':'r'));
-  sv('jd-pnl-sm',(p>=0?'+':'')+fm(p),(p>=0?'g':'r'));
-  // Account impact
+
+  // ── Account Impact ───────────────────────────────────────────────────────
+  // Account tabs
+  renderImpactAccountTabs(t);
   const pStr=(p>=0?'+':'')+fm(p);
   document.getElementById('jd-gross').textContent=pStr;
   document.getElementById('jd-gross').className='v '+(p>=0?'g':'r');
-  sv('jd-fees',fees?`-${fm(fees)}`:'—','r');
+  // Fees
+  sv('jd-fees-display',fees?`-${fm(fees)}`:'—','r');
   const netEl=document.getElementById('jd-net');
   if(netEl){netEl.textContent=(net>=0?'+':'')+fm(net);netEl.className='v '+(net>=0?'g':'r');}
-  const outEl=document.getElementById('jd-outcome');
-  if(outEl)outEl.innerHTML=`<span class="tag ${w?'win':'loss'}">${w?'WIN':'LOSS'}</span>`;
-  // Hold time = duration
+  // Running balance
+  renderAccountBalance(t);
+  // Hold time
   sv('jd-hold',t.duration||'—','');
-  sv('jd-bal-after','—','');
-  sv('jd-acct-pct','—','');
-  // In profit / In DD — estimated from R:R direction
-  const inProfitPct=rr!==null&&w?'~'+(Math.min(95,60+rr*5)).toFixed(1)+'%':'—';
-  const inDdPct=rr!==null&&!w?'~'+(Math.min(80,40+Math.abs(rr)*5)).toFixed(1)+'%':'—';
-  sv('jd-in-profit',inProfitPct,w?'g':'');
-  sv('jd-in-dd',inDdPct,!w?'r':'');
-  // MFE — use exit pts as proxy
-  const mfePts=exitPts!==null?Math.abs(exitPts).toFixed(2)+' pts':'—';
-  const mfePct=exitPts!==null&&entry?((Math.abs(exitPts)/parseFloat(entry))*100).toFixed(3)+'%':'—';
-  sv('jd-mfe',w?'+'+mfePts:mfePts,w?'g':'');
-  sv('jd-mfe-pct',w?'+'+mfePct:mfePct,w?'g':'');
+  // In Profit / In DD — both apply regardless of outcome
+  if(rr !== null){
+    const inProfitPct = w
+      ? '~'+(Math.min(95, 60+Math.abs(rr)*5)).toFixed(1)+'%'
+      : '~'+(Math.max(5,  30-Math.abs(rr)*5)).toFixed(1)+'%';
+    const inDdPct = w
+      ? '~'+(Math.max(5,  40-Math.abs(rr)*5)).toFixed(1)+'%'
+      : '~'+(Math.min(95, 70+Math.abs(rr)*5)).toFixed(1)+'%';
+    sv('jd-in-profit', inProfitPct, 'g');
+    sv('jd-in-dd',     inDdPct,     'r');
+  } else {
+    sv('jd-in-profit','—','');
+    sv('jd-in-dd','—','');
+  }
+  // MFE — pts + %
+  const mfePtsVal = exitPts!==null ? Math.abs(exitPts) : null;
+  const mfePctVal = mfePtsVal!==null && entry ? (mfePtsVal/entry*100) : null;
+  const mfeStr    = mfePtsVal!==null
+    ? (w?'+':'')+mfePtsVal.toFixed(2)+'pts'+(mfePctVal!==null?' ('+mfePctVal.toFixed(2)+'%)':'')
+    : '—';
+  sv('jd-mfe', mfeStr, be?'':w?'g':'r');
+  // MAE — pts + %
+  const maePtsVal = riskPts ? riskPts : (exitPts!==null ? Math.abs(exitPts) : null);
+  const maePctVal = maePtsVal!==null && entry ? (maePtsVal/entry*100) : null;
+  const maeStr    = maePtsVal!==null
+    ? '-'+maePtsVal.toFixed(2)+'pts'+(maePctVal!==null?' (-'+maePctVal.toFixed(2)+'%)':'')
+    : '—';
+  sv('jd-mae', maeStr, 'r');
   // Bars to hit
   const barMins=currentTF==='1'?1:currentTF==='5'?5:currentTF==='15'?15:currentTF==='60'?60:390;
   const durationMins=t.duration?parseDurToMins(t.duration):null;
   sv('jd-bars',durationMins?Math.round(durationMins/barMins)+' bars':'—','');
   // SL/TP
-  const slFirst=sl&&p<0;
+  const slFirst=sl&&outcome==='loss';
   const sltpEl=document.getElementById('jd-sltp-result');
-  if(sltpEl)sltpEl.innerHTML=`<span style="color:${slFirst?'var(--red)':'var(--green)'}">${slFirst?'LOSS (SL FIRST)':'WIN (TP FIRST)'}</span>`;
+  if(sltpEl){
+    const sltpLabel=be?'BREAK-EVEN':slFirst?'LOSS (SL FIRST)':'WIN (TP FIRST)';
+    const sltpColor=be?'#f0c05c':slFirst?'var(--red)':'var(--green)';
+    sltpEl.innerHTML=`<span style="color:${sltpColor}">${sltpLabel}</span>`;
+  }
   sv('jd-sltp-level',slFirst?(sl?sl+'':sl||'—'):(exit?exit+'':exit||'—'),'');
-  // Setup / Model + Fees
+  // Setup / Model
   sv('jd-setup',t.setup||'—','');
-  sv('jd-fees',fees?`-${fm(fees)}`:'—','r');
   // TP targets panel
   renderTpPanel(t);
+  // Update chart visibility buttons
+  updateVisibilityButtons();
 }
 
 function parseDurToMins(dur){
@@ -3161,6 +3307,7 @@ function renderSettingsAccounts(){
     <span class="settings-chip">
       <span style="color:var(--text)">${a.name}</span>
       ${a.balance?'<span style="color:var(--green);margin-left:4px">$'+Number(a.balance).toLocaleString()+'</span>':''}
+      ${a.balanceDate?'<span style="color:var(--muted);margin-left:4px;font-size:9px">from '+a.balanceDate+'</span>':''}
       <button class="del" onclick="removeSettingAccount(${i})">&#10005;</button>
     </span>`).join('');
 }
@@ -3168,13 +3315,14 @@ function renderSettingsAccounts(){
 function addSettingAccount(){
   const name=document.getElementById('settings-acct-name')?.value.trim();
   const balance=parseFloat(document.getElementById('settings-acct-balance')?.value)||0;
+  const balanceDate=document.getElementById('settings-acct-date')?.value||'';
   if(!name){toast('Enter account name.',true);return;}
   const accts=loadAccounts();
   if(accts.find(a=>a.name===name)){toast('Account already exists.',true);return;}
-  accts.push({name,balance});saveAccounts(accts);renderSettingsAccounts();
+  accts.push({name,balance,balanceDate});saveAccounts(accts);renderSettingsAccounts();
   document.getElementById('settings-acct-name').value='';
   document.getElementById('settings-acct-balance').value='';
-  // Refresh account dropdowns
+  document.getElementById('settings-acct-date').value='';
   populateAccountDropdowns();
   toast('Account added: '+name);
 }
@@ -3194,13 +3342,7 @@ function populateAccountDropdowns(){
     const selected=[...ltChecks.selectedOptions].map(o=>o.value);
     ltChecks.innerHTML=accts.map(a=>`<option value="${a.name}" ${selected.includes(a.name)||(selected.length===0&&a.name==='Default')?'selected':''}>${a.name}${a.balance?' ($'+Number(a.balance).toLocaleString()+')':''}</option>`).join('');
   }
-  // Position size account selector
-  const psAcct=document.getElementById('ps-acct-select');
-  if(psAcct){
-    const curPs=psAcct.value;
-    psAcct.innerHTML=accts.map(a=>`<option value="${a.name}">${a.name}${a.balance?' ($'+Number(a.balance).toLocaleString()+')':''}</option>`).join('');
-    if([...psAcct.options].some(o=>o.value===curPs))psAcct.value=curPs;
-  }
+  // Position size account selector — now handled by chip UI (renderAccountChips)
   // Dashboard filter
   const dashSel=document.getElementById('acct-filter');
   if(dashSel){
@@ -3854,6 +3996,99 @@ switchPage = function(page, btn){
   if(page==='eod') renderEodCalendar();
 };
 
+// ── TradingView CSV chart loading ─────────────────────────────────────────────
+const CSV_CACHE_KEY = 'tradelog_chart_csvs_v1';
+function loadCsvCache(){ try{ return JSON.parse(localStorage.getItem(CSV_CACHE_KEY))||{}; }catch{ return {}; } }
+function saveCsvCache(c){ localStorage.setItem(CSV_CACHE_KEY, JSON.stringify(c)); }
+
+function parseTradingViewCSV(text){
+  const lines = text.trim().split('\n');
+  const bars = [];
+  let detectedTz = null;
+  for(let i=1; i<lines.length; i++){
+    const cols = lines[i].split(',');
+    if(cols.length < 5) continue;
+    const [timeStr, o, h, l, c] = cols;
+    if(!timeStr||!o) continue;
+    // Extract timezone offset from first data row e.g. "2026-07-17T05:00:00-04:00"
+    if(!detectedTz){
+      const tzMatch = timeStr.match(/([+-]\d{2}:\d{2})$/);
+      if(tzMatch) detectedTz = tzMatch[1];
+    }
+    const localStr = timeStr.replace(/[+-]\d{2}:\d{2}$/, '').replace('T',' ');
+    const ts = Math.floor(Date.parse(localStr.replace(' ','T')+'Z')/1000);
+    if(isNaN(ts)) continue;
+    bars.push({ time:ts, open:parseFloat(o), high:parseFloat(h), low:parseFloat(l), close:parseFloat(c) });
+  }
+  const seen = new Map();
+  bars.forEach(b=>seen.set(b.time,b));
+  return { bars:[...seen.values()].sort((a,b)=>a.time-b.time), tz:detectedTz };
+}
+
+function aggregateCsvBars(bars1m, minuteTF){
+  if(minuteTF<=1) return bars1m;
+  const tfSec = minuteTF*60;
+  const buckets = new Map();
+  bars1m.forEach(b=>{
+    const bucket = Math.floor(b.time/tfSec)*tfSec;
+    if(!buckets.has(bucket)){
+      buckets.set(bucket,{time:bucket,open:b.open,high:b.high,low:b.low,close:b.close});
+    } else {
+      const c=buckets.get(bucket);
+      c.high=Math.max(c.high,b.high); c.low=Math.min(c.low,b.low); c.close=b.close;
+    }
+  });
+  return [...buckets.values()].sort((a,b)=>a.time-b.time);
+}
+
+function loadChartCSV(input){
+  if(!input.files[0]) return;
+  if(!selectedTradeId){ toast('Select a trade first.',true); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const { bars: bars1m, tz } = parseTradingViewCSV(e.target.result);
+    if(!bars1m||bars1m.length===0){ toast('Could not parse CSV.',true); input.value=''; return; }
+    const cache = loadCsvCache();
+    cache[selectedTradeId] = { bars: bars1m, tz };
+    saveCsvCache(cache);
+    input.value='';
+    const t = trades.find(x=>x.id===selectedTradeId);
+    if(t) loadTradingViewChart(t);
+    const st=document.getElementById('csv-chart-status');
+    if(st){ st.textContent=`✓ ${bars1m.length} bars`; st.style.color='var(--green)'; }
+    showCsvTzLabel(tz);
+    toast(`✓ ${bars1m.length} real candles loaded`);
+  };
+  reader.readAsText(input.files[0]);
+}
+
+function showCsvTzLabel(tz){
+  const el = document.getElementById('csv-tz-label');
+  if(!el) return;
+  if(tz){
+    el.textContent = 'UTC' + tz.replace(':00','');
+    el.style.display = 'inline-block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function getCsvCandles(tradeId, minuteTF){
+  const cache = loadCsvCache();
+  const entry = cache[tradeId];
+  if(!entry) return null;
+  // Support both old format (array) and new format ({bars, tz})
+  const bars1m = Array.isArray(entry) ? entry : entry.bars;
+  const tz     = Array.isArray(entry) ? null  : entry.tz;
+  if(!bars1m||!bars1m.length) return null;
+  // Show tz label
+  showCsvTzLabel(tz);
+  const agg = aggregateCsvBars(bars1m, minuteTF);
+  if(currentCandleType==='line'||currentCandleType==='area') return agg.map(b=>({time:b.time,value:b.close}));
+  if(currentCandleType==='ha') return computeHA(agg);
+  return agg;
+}
+
 // ── Dark/Light theme ────────────────────────────────────────────────────────
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
@@ -4023,13 +4258,249 @@ saveAccounts = (a)=>{ _origSaveAccounts(a); scheduleSync(); };
 const _origSaveEodDayNotes = saveEodDayNotes;
 saveEodDayNotes = (n)=>{ _origSaveEodDayNotes(n); scheduleSync(); };
 
+// ── Fees inline edit ──────────────────────────────────────────────────────────
+function editFeesInline(){
+  if(!selectedTradeId) return;
+  const t=trades.find(x=>x.id===selectedTradeId); if(!t) return;
+  const cur=parseFloat(t.fees)||0;
+  const pop=document.createElement('div');
+  pop.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:0.5px solid var(--accent);border-radius:10px;padding:20px;z-index:700;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,.6)';
+  pop.innerHTML=`<div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.07em">Fees / Commission</div>
+    <input id="fees-pop-input" type="number" min="0" step="0.01" value="${cur}" style="width:100%;background:var(--surface2);border:0.5px solid var(--accent);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:18px;padding:8px 10px;outline:none;text-align:center">
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+      <button onclick="this.closest('div[style]').remove()" style="font-family:var(--font-sans);font-size:12px;padding:6px 12px;background:var(--surface2);border:0.5px solid var(--border2);color:var(--muted);border-radius:5px;cursor:pointer">Cancel</button>
+      <button onclick="confirmFees()" style="font-family:var(--font-sans);font-size:12px;padding:6px 14px;background:var(--accent);border:none;color:#fff;border-radius:5px;cursor:pointer;font-weight:500">Save</button>
+    </div>`;
+  document.body.appendChild(pop);
+  const inp=pop.querySelector('#fees-pop-input');
+  inp.focus();inp.select();
+  inp.onkeydown=e=>{ if(e.key==='Enter')confirmFees(); if(e.key==='Escape')pop.remove(); };
+  window._feesPop=pop;
+}
+function confirmFees(){
+  if(!selectedTradeId) return;
+  const t=trades.find(x=>x.id===selectedTradeId); if(!t) return;
+  const inp=document.getElementById('fees-pop-input'); if(!inp) return;
+  const v=parseFloat(inp.value)||0;
+  window._feesPop?.remove();
+  t.fees=v; saveTrades(trades); renderTradeDetail(t); render();
+  toast('Fees: '+fm(v));
+}
+
+// ── Account Impact tabs ───────────────────────────────────────────────────────
+let _impactAcct=null; // which account is selected in impact view
+
+function renderImpactAccountTabs(t){
+  const el=document.getElementById('jd-impact-acct-tabs'); if(!el) return;
+  const accts=Array.isArray(t.account)?t.account:[t.account||'Default'];
+  if(accts.length<=1){ _impactAcct=accts[0]||'Default'; el.innerHTML=''; return; }
+  if(!_impactAcct||!accts.includes(_impactAcct)) _impactAcct=accts[0];
+  el.innerHTML=accts.map(a=>`<button onclick="setImpactAcct('${a}')" style="font-family:var(--font-mono);font-size:9px;padding:2px 7px;border-radius:4px;border:0.5px solid ${a===_impactAcct?'var(--accent)':'var(--border2)'};background:${a===_impactAcct?'var(--accent-dim)':'var(--surface2)'};color:${a===_impactAcct?'var(--text)':'var(--muted)'};cursor:pointer">${a}</button>`).join('');
+}
+
+function setImpactAcct(acct){
+  _impactAcct=acct;
+  if(!selectedTradeId) return;
+  const t=trades.find(x=>x.id===selectedTradeId); if(!t) return;
+  renderTradeDetail(t);
+}
+
+// ── Account running balance ───────────────────────────────────────────────────
+function calcAccountBalance(acctName, beforeTradeId){
+  const allAccts=loadAccounts();
+  const acct=allAccts.find(a=>a.name===acctName);
+  if(!acct) return null;
+  const initBal=parseFloat(acct.balance)||0;
+  const initDate=acct.balanceDate||'';
+  // Sum all trades assigned to this account that are before the target trade date
+  const target=trades.find(x=>x.id===beforeTradeId);
+  if(!target) return initBal;
+  // Sort trades by date
+  const sorted=[...trades].sort((a,b)=>a.date.localeCompare(b.date)||(a.id.localeCompare(b.id)));
+  let bal=initBal;
+  for(const t of sorted){
+    if(t.id===beforeTradeId) break;
+    if(!initDate||t.date>=initDate){
+      const accts=Array.isArray(t.account)?t.account:[t.account||'Default'];
+      if(accts.includes(acctName)) bal+=parseFloat(t.pnl)||0;
+    }
+  }
+  return bal;
+}
+
+function renderAccountBalance(t){
+  const acct=_impactAcct||(Array.isArray(t.account)?t.account[0]:t.account||'Default');
+  const allAccts=loadAccounts();
+  const acctObj=allAccts.find(a=>a.name===acct);
+  const sv=(id,v,cls)=>{const e=document.getElementById(id);if(!e)return;e.textContent=v;if(cls)e.className='v '+cls;};
+
+  // If account has no initial balance set, show a hint
+  if(!acctObj || (!parseFloat(acctObj.balance) && !acctObj.balanceDate)){
+    sv('jd-bal-after','Set initial bal. in Settings','');
+    document.getElementById('jd-bal-after').style.fontSize='9px';
+    sv('jd-acct-pct','—','');
+    return;
+  }
+  document.getElementById('jd-bal-after').style.fontSize='';
+
+  const balBefore=calcAccountBalance(acct,t.id);
+  const p=parseFloat(t.pnl)||0;
+  const fees=parseFloat(t.fees)||0;
+  const net=p-fees;
+  if(balBefore!==null){
+    const balAfter=balBefore+net;
+    const pct=balBefore?((net/balBefore)*100).toFixed(2)+'%':'—';
+    sv('jd-bal-after',fm(balAfter),balAfter>=balBefore?'g':'r');
+    sv('jd-acct-pct',(net>=0?'+':'')+pct,net>=0?'g':'r');
+  } else {
+    sv('jd-bal-after','—','');
+    sv('jd-acct-pct','—','');
+  }
+}
+
+// ── Chart visibility toggles ──────────────────────────────────────────────────
+let _linesVisible=true;
+let _areaVisible=true;
+
+function updateVisibilityButtons(){
+  const bl=document.getElementById('btn-toggle-lines');
+  const ba=document.getElementById('btn-toggle-area');
+  if(bl){
+    bl.style.borderColor=_linesVisible?'var(--accent)':'var(--border2)';
+    bl.style.background=_linesVisible?'var(--accent-dim)':'var(--surface2)';
+    bl.style.opacity=_linesVisible?'1':'0.45';
+    bl.title=_linesVisible?'Hide price lines & markers':'Show price lines & markers';
+  }
+  if(ba){
+    ba.style.borderColor=_areaVisible?'var(--accent)':'var(--border2)';
+    ba.style.background=_areaVisible?'var(--accent-dim)':'var(--surface2)';
+    ba.style.opacity=_areaVisible?'1':'0.45';
+    ba.title=_areaVisible?'Hide shaded area':'Show shaded area';
+  }
+}
+
+function toggleChartLines(){
+  _linesVisible=!_linesVisible;
+  // Toggle price lines opacity
+  ['entry','sl','exit'].forEach(k=>{
+    if(lwPriceLines[k]){
+      try{ lwPriceLines[k].applyOptions({ lineVisible:_linesVisible, axisLabelVisible:_linesVisible }); }catch(e){}
+    }
+  });
+  lwTpLines.forEach(pl=>{ try{ pl.applyOptions({ lineVisible:_linesVisible, axisLabelVisible:_linesVisible }); }catch(e){} });
+  // Toggle markers
+  if(lwCandleSeries){
+    if(_linesVisible){ const t=trades.find(x=>x.id===selectedTradeId); if(t) refreshMarkers(t); }
+    else { try{ lwCandleSeries.setMarkers([]); }catch(e){} }
+  }
+  updateVisibilityButtons();
+}
+
+function toggleChartArea(){
+  _areaVisible=!_areaVisible;
+  if(lwConnectorSeries){
+    try{ lwConnectorSeries.applyOptions({ visible:_areaVisible }); }catch(e){}
+  }
+  updateVisibilityButtons();
+}
+
+// ── BE / Break-Even settings ──────────────────────────────────────────────────
+function saveBeSettings(){
+  const s=loadSettings();
+  s.be={ dollars:parseFloat(document.getElementById('s-be-dollars')?.value)||0, points:parseFloat(document.getElementById('s-be-points')?.value)||0 };
+  saveSettings(s);
+}
+
+function loadBeSettings(){
+  const s=loadSettings();
+  const be=s.be||{dollars:0,points:0};
+  const bd=document.getElementById('s-be-dollars'); if(bd) bd.value=be.dollars||'';
+  const bp=document.getElementById('s-be-points');  if(bp) bp.value=be.points||'';
+}
+
+// ── Chart / Notes resize handle ───────────────────────────────────────────────
+(function(){
+  const handle  = document.getElementById('jl-resize-handle');
+  const bottomBar = document.getElementById('jl-bottom-bar');
+  const center  = document.querySelector('.jl-center');
+  if(!handle||!bottomBar||!center) return;
+
+  // Restore saved height
+  const saved = parseInt(localStorage.getItem('tradelog_notes_h'));
+  if(saved && saved >= 48 && saved <= 400) bottomBar.style.height = saved+'px';
+
+  let startY=0, startH=0, dragging=false;
+
+  handle.addEventListener('mousedown', e=>{
+    dragging=true;
+    startY=e.clientY;
+    startH=bottomBar.offsetHeight;
+    handle.classList.add('dragging');
+    document.body.style.cursor='ns-resize';
+    document.body.style.userSelect='none';
+  });
+
+  document.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const delta = startY - e.clientY; // drag up = bigger notes
+    const newH = Math.min(400, Math.max(48, startH+delta));
+    bottomBar.style.height = newH+'px';
+    // Trigger LW Charts resize
+    if(lwChart && document.getElementById('tv-chart-container').clientWidth>0){
+      lwChart.applyOptions({
+        width: document.getElementById('tv-chart-container').clientWidth,
+        height: document.getElementById('tv-chart-container').clientHeight||400
+      });
+    }
+  });
+
+  document.addEventListener('mouseup', ()=>{
+    if(!dragging) return;
+    dragging=false;
+    handle.classList.remove('dragging');
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+    localStorage.setItem('tradelog_notes_h', bottomBar.offsetHeight);
+  });
+})();
+
+// ── Multi-account chip selector in Position Size panel ────────────────────────
+function renderAccountChips(t){
+  const el = document.getElementById('ps-acct-chips');
+  if(!el) return;
+  const allAccts = loadAccounts().map(a=>a.name);
+  const tradeAccts = Array.isArray(t.account) ? t.account : [t.account||'Default'];
+  el.innerHTML = allAccts.map(a=>{
+    const active = tradeAccts.includes(a);
+    return `<span onclick="toggleTradeAccount('${a}')"
+      style="font-family:var(--font-mono);font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;border:0.5px solid ${active?'var(--accent)':'var(--border2)'};background:${active?'var(--accent-dim)':'var(--surface2)'};color:${active?'var(--text)':'var(--muted)'};transition:all .15s">${a}</span>`;
+  }).join('');
+}
+
+function toggleTradeAccount(acct){
+  if(!selectedTradeId) return;
+  const t = trades.find(x=>x.id===selectedTradeId); if(!t) return;
+  let accts = Array.isArray(t.account) ? [...t.account] : [t.account||'Default'];
+  if(accts.includes(acct)){
+    // Remove — keep at least one
+    if(accts.length > 1) accts = accts.filter(a=>a!==acct);
+  } else {
+    accts.push(acct);
+  }
+  t.account = accts.length === 1 ? accts[0] : accts;
+  saveTrades(trades);
+  renderAccountChips(t);
+  renderTradeDetail(t);
+  render();
+  toast('Account updated.');
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadChartSettings(true);
 applyTheme(localStorage.getItem('tradelog_theme') || 'dark');
 updateStoragePill();
 populateAccountDropdowns();
 render();
-
 // Auto-pull from cloud on page load if hosted
 if(isHosted() && location.hostname !== 'localhost'){
   setSyncPill('saving','Loading…');
