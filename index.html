@@ -2650,10 +2650,18 @@ function updatePnlPreview(){
 const SETTINGS_KEY='tradelog_settings_v1';
 const DEFAULT_SETUPS=['.382','Reversal','Continuation','Morning','Asia','Afternoon','8ema','EOD','Live','Personal','Challenge','Funded','FTB','BT','MOM','m5','m3','Scalp'];
 const DEFAULT_TAGS=['news','reversal','continuation','morning','asia','afternoon','8ema','EOD','Live','Personal','Challenge','Funded','.382','FTB','BT','MOM','m5','m3','scalp'];
+const DEFAULT_EOD_TAGS=['No Trading Day','Tilt','Bad Management','Good Execution','Overtrading','Revenge Trading','Missed Setup','News Day','Personal Best'];
 
 function loadSettings(){
-  try{return JSON.parse(localStorage.getItem(SETTINGS_KEY))||{setups:[...DEFAULT_SETUPS],tags:[...DEFAULT_TAGS]};}
-  catch{return{setups:[...DEFAULT_SETUPS],tags:[...DEFAULT_TAGS]};}
+  try{
+    const s=JSON.parse(localStorage.getItem(SETTINGS_KEY))||{};
+    // Always guarantee arrays exist — cloud bundle may not have them
+    if(!Array.isArray(s.setups))  s.setups  = [...DEFAULT_SETUPS];
+    if(!Array.isArray(s.tags))    s.tags    = [...DEFAULT_TAGS];
+    if(!Array.isArray(s.eodTags)) s.eodTags = [...DEFAULT_EOD_TAGS];
+    return s;
+  }
+  catch{ return{setups:[...DEFAULT_SETUPS],tags:[...DEFAULT_TAGS],eodTags:[...DEFAULT_EOD_TAGS]}; }
 }
 function saveSettings(s){localStorage.setItem(SETTINGS_KEY,JSON.stringify(s));}
 
@@ -3936,7 +3944,7 @@ document.addEventListener('paste', e=>{
 });
 
 // ── Default EOD tags ──────────────────────────────────────────────────────────
-const DEFAULT_EOD_TAGS = ['No Trading Day','Tilt','Bad Management','Good Execution','Overtrading','Revenge Trading','Missed Setup','News Day','Personal Best'];
+// ── Default EOD tags defined at top of file ───────────────────────────────────
 
 // ── Hook EOD tags into settings ───────────────────────────────────────────────
 // Patch loadSettings default and renderSettingsList to include eodTags
@@ -4177,11 +4185,19 @@ function bundleLocalData(){
 
 function applyCloudBundle(bundle){
   if(!bundle) return;
-  localStorage.setItem('tradelog_v2',                   JSON.stringify(bundle.trades   ||[]));
-  localStorage.setItem('tradelog_eods_v1',              JSON.stringify(bundle.eods     ||[]));
-  localStorage.setItem('tradelog_eod_day_notes_v1',     JSON.stringify(bundle.eodNotes ||{}));
-  localStorage.setItem('tradelog_settings_v1',          JSON.stringify(bundle.settings ||{}));
-  localStorage.setItem('tradelog_accounts_v1',          JSON.stringify(bundle.accounts ||[]));
+  // Merge cloud settings with defaults so arrays are never missing
+  const cloudSettings = bundle.settings || {};
+  const mergedSettings = {
+    setups:  Array.isArray(cloudSettings.setups)  ? cloudSettings.setups  : [...DEFAULT_SETUPS],
+    tags:    Array.isArray(cloudSettings.tags)    ? cloudSettings.tags    : [...DEFAULT_TAGS],
+    eodTags: Array.isArray(cloudSettings.eodTags) ? cloudSettings.eodTags : [...DEFAULT_EOD_TAGS],
+    ...cloudSettings,
+  };
+  localStorage.setItem('tradelog_v2',               JSON.stringify(bundle.trades   ||[]));
+  localStorage.setItem('tradelog_eods_v1',          JSON.stringify(bundle.eods     ||[]));
+  localStorage.setItem('tradelog_eod_day_notes_v1', JSON.stringify(bundle.eodNotes ||{}));
+  localStorage.setItem('tradelog_settings_v1',      JSON.stringify(mergedSettings));
+  localStorage.setItem('tradelog_accounts_v1',      JSON.stringify(bundle.accounts ||[]));
   if(bundle.theme) localStorage.setItem('tradelog_theme', bundle.theme);
   trades = loadTrades();
   eods   = loadEods();
