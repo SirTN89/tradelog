@@ -1,6 +1,6 @@
-const { getStore } = require('@netlify/blobs');
+import { getStore } from '@netlify/blobs';
 
-exports.handler = async function(event) {
+export default async (req, context) => {
   const CORS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -8,45 +8,49 @@ exports.handler = async function(event) {
   };
 
   // Preflight
-  if(event.httpMethod === 'OPTIONS'){
-    return { statusCode: 204, headers: CORS, body: '' };
+  if(req.method === 'OPTIONS'){
+    return new Response(null, { status: 204, headers: CORS });
   }
 
   try {
-    const store = getStore('tradelog');
+    const store = getStore({ name: 'tradelog', consistency: 'strong' });
 
     // GET — load data
-    if(event.httpMethod === 'GET'){
+    if(req.method === 'GET'){
       const data = await store.get('tradelog-data', { type: 'json' });
       if(data === null){
-        return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'No data yet' }) };
+        return new Response(JSON.stringify({ error: 'No data yet' }), {
+          status: 404,
+          headers: { ...CORS, 'Content-Type': 'application/json' }
+        });
       }
-      return {
-        statusCode: 200,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      };
+      return new Response(JSON.stringify(data), {
+        status: 200,
+        headers: { ...CORS, 'Content-Type': 'application/json' }
+      });
     }
 
     // PUT — save data
-    if(event.httpMethod === 'PUT'){
-      const body = JSON.parse(event.body || '{}');
+    if(req.method === 'PUT'){
+      const body = await req.json();
       await store.setJSON('tradelog-data', body);
-      return {
-        statusCode: 200,
-        headers: CORS,
-        body: JSON.stringify({ ok: true }),
-      };
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: CORS
+      });
     }
 
-    return { statusCode: 405, headers: CORS, body: 'Method not allowed' };
+    return new Response('Method not allowed', { status: 405, headers: CORS });
 
   } catch(err) {
     console.error('Sync error:', err);
-    return {
-      statusCode: 500,
-      headers: CORS,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...CORS, 'Content-Type': 'application/json' }
+    });
   }
+};
+
+export const config = {
+  path: '/api/sync'
 };
