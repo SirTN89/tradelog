@@ -1,0 +1,8 @@
+{
+  "name": "tradelog",
+  "version": "1.0.0",
+  "description": "TRADE///LOG trading journal",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
