@@ -1666,12 +1666,28 @@ function selectJournalTrade(id){
   const t=trades.find(x=>x.id===id);
   if(!t)return;
   renderJournalList();
-  if(!wasSelected||!lwChart){
-    // Switching trades: always reload chart fresh (clears old lines)
-    loadTradingViewChart(t);
+  // Pull CSV from cloud if not in local cache, then load chart
+  const cache = loadCsvCache();
+  if(!cache[id] && isHosted() && location.hostname !== 'localhost'){
+    // Show loading state while fetching CSV
+    const msgEl = document.getElementById('lw-chart-msg');
+    if(msgEl){ msgEl.style.display='flex'; msgEl.innerHTML='<div class="ph-icon">📡</div><p>Fetching chart data…</p>'; }
+    pullCsvForTrade(id).then(()=>{
+      if(!wasSelected||!lwChart){ loadTradingViewChart(t); }
+      else { refreshChartLines(t); }
+    });
   } else {
-    // Same trade re-selected (e.g. after edit): just refresh lines without reloading
-    refreshChartLines(t);
+    if(!wasSelected||!lwChart){ loadTradingViewChart(t); }
+    else { refreshChartLines(t); }
+  }
+  // Pull screenshots lazily if not in memory and flag says they exist
+  if(t._hasScreenshots && !(t.screenshots&&t.screenshots.length) && isHosted() && location.hostname!=='localhost'){
+    pullScreenshotsForTrade(id).then(ss=>{
+      if(ss&&ss.length){
+        t.screenshots=ss;
+        if(currentChartView==='screenshot') renderScreenshotTab();
+      }
+    });
   }
   renderTradeDetail(t);
   loadTradeNotes(t);
@@ -2290,6 +2306,8 @@ function readAndSaveScreenshot(file){
     if(!t.screenshots)t.screenshots=[];
     t.screenshots.push(e.target.result);
     saveTrades(trades);
+    // Push screenshots to their own blob
+    pushScreenshotsForTrade(t.id, t.screenshots);
     renderScreenshotTab();
     toast('Screenshot saved.');
   };
@@ -2300,7 +2318,9 @@ function removeScreenshot(){
   if(!selectedTradeId)return;
   const t=trades.find(x=>x.id===selectedTradeId);if(!t)return;
   t.screenshot=null;t.screenshots=[];
+  t._hasScreenshots=false;
   saveTrades(trades);
+  deleteScreenshotsForTrade(t.id);
   renderScreenshotTab();
   toast('Screenshot removed.');
 }
@@ -3378,6 +3398,8 @@ function quickDeleteTrade(id){
   }
   if(btn){btn.dataset.confirming='';btn.textContent='🗑';btn.style.color='';btn.style.fontWeight='';}
   trades=trades.filter(x=>x.id!==id);
+  deleteCsvForTrade(id);
+  deleteScreenshotsForTrade(id);
   if(selectedTradeId===id){
     selectedTradeId=null;
     if(lwConnectorSeries&&lwChart){try{lwChart.removeSeries(lwConnectorSeries);}catch(e){}}lwConnectorSeries=null;
@@ -3780,8 +3802,19 @@ function openEodForm(id, dateStr){
       onclick="this.classList.toggle('selected')"
       style="cursor:pointer">${t}</span>`).join('');
 
-  // Render screenshots — seed _eodFormScreenshots from existing record
-  _eodFormScreenshots = id ? [...((eods.find(x=>x.id===id)||{}).screenshots||[])] : [];
+  // Render screenshots — seed from existing record, pull from blob if needed
+  const existingEod = id ? eods.find(x=>x.id===id) : null;
+  if(existingEod && existingEod._hasScreenshots && !(existingEod.screenshots&&existingEod.screenshots.length) && isHosted() && location.hostname!=='localhost'){
+    // Pull from cloud then re-render
+    pullScreenshotsForEod(id).then(ss=>{
+      if(ss&&ss.length){
+        existingEod.screenshots=ss;
+        _eodFormScreenshots=[...ss];
+        renderEodFormScreenshots(_eodFormScreenshots);
+      }
+    });
+  }
+  _eodFormScreenshots = id ? [...((existingEod||{}).screenshots||[])] : [];
   renderEodFormScreenshots(_eodFormScreenshots);
 
   // Delete button
@@ -3859,19 +3892,29 @@ function submitEodForm(){
   const selTags = [...document.querySelectorAll('#eod-f-tags .tag-chip.selected')].map(c=>c.dataset.tag);
 
   const screenshots = [..._eodFormScreenshots];
+  let savedEodId = _eodEditingId;
 
   if(_eodEditingId){
     const e = eods.find(x=>x.id===_eodEditingId);
     if(e){
       Object.assign(e,{ symbol:sym, date, tags:selTags,
         notes:_eodTabText.notes, mistakes:_eodTabText.mistakes, lessons:_eodTabText.lessons,
-        screenshots });
+        screenshots:[], // stripped — stored in blob
+        _hasScreenshots: screenshots.length > 0 });
+      savedEodId = e.id;
     }
   } else {
-    eods.push({ id:uid(), symbol:sym, date, tags:selTags,
+    const newId = uid();
+    savedEodId = newId;
+    eods.push({ id:newId, symbol:sym, date, tags:selTags,
       notes:_eodTabText.notes, mistakes:_eodTabText.mistakes, lessons:_eodTabText.lessons,
-      screenshots, createdAt:Date.now() });
+      screenshots:[], _hasScreenshots: screenshots.length > 0, createdAt:Date.now() });
   }
+  // Push screenshots to their own blob
+  if(screenshots.length) pushScreenshotsForEod(savedEodId, screenshots);
+  // Restore screenshots in memory for current session (so tab still shows them)
+  const eodInMem = eods.find(x=>x.id===savedEodId);
+  if(eodInMem) eodInMem.screenshots = screenshots;
   saveEods(eods);
   _eodFormScreenshots = [];
   closeEodForm();
@@ -3894,8 +3937,10 @@ function deleteEod(){
     setTimeout(()=>{ if(btn.dataset.confirming){ btn.dataset.confirming=''; btn.textContent='✕ Delete'; btn.style.fontWeight=''; } },2500);
     return;
   }
+  const deletingId = _eodEditingId;
   eods = eods.filter(x=>x.id!==_eodEditingId);
   saveEods(eods);
+  deleteScreenshotsForEod(deletingId);
   _eodFormScreenshots = [];
   closeEodForm();
   renderEodCalendar();
@@ -4059,6 +4104,7 @@ function loadChartCSV(input){
     const cache = loadCsvCache();
     cache[selectedTradeId] = { bars: bars1m, tz };
     saveCsvCache(cache);
+    pushCsvForTrade(selectedTradeId); // push to its own blob in background
     input.value='';
     const t = trades.find(x=>x.id===selectedTradeId);
     if(t) loadTradingViewChart(t);
@@ -4120,26 +4166,23 @@ function toggleTheme(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// CLOUD SYNC — via Netlify Function at /api/sync
+// CLOUD SYNC — multi-blob via Netlify Function at /api/sync
+// Blobs:
+//   tradelog-meta           → trades, eods, eodNotes, settings, accounts, theme
+//   tradelog-csv-{tradeId}  → CSV candle data per trade
+//   tradelog-ss-{tradeId}   → screenshots per trade (future-proof, not yet split)
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Detect if running on Netlify (has the function available) or locally
 function isHosted(){
   return location.protocol === 'https:' || location.hostname === 'localhost';
 }
 
 function setSyncPill(state, label){
-  const pill  = document.getElementById('sync-pill');
-  const lbl   = document.getElementById('sync-label');
-  const icon  = document.getElementById('sync-icon');
+  const pill = document.getElementById('sync-pill');
+  const lbl  = document.getElementById('sync-label');
+  const icon = document.getElementById('sync-icon');
   if(!pill||!lbl) return;
-  const colors={
-    ok:     'var(--green)',
-    saving: '#f0c05c',
-    error:  'var(--red)',
-    idle:   'var(--muted)',
-    off:    'var(--muted)',
-  };
+  const colors={ ok:'var(--green)', saving:'#f0c05c', error:'var(--red)', idle:'var(--muted)', off:'var(--muted)' };
   const col = colors[state]||'var(--muted)';
   lbl.textContent = label;
   lbl.style.color = col;
@@ -4148,31 +4191,95 @@ function setSyncPill(state, label){
   icon.style.animation = state==='saving' ? 'spin 1s linear infinite' : '';
 }
 
-(()=>{
-  const st=document.createElement('style');
-  st.textContent='@keyframes spin{to{transform:rotate(360deg)}}';
-  document.head.appendChild(st);
-})();
+(()=>{ const st=document.createElement('style'); st.textContent='@keyframes spin{to{transform:rotate(360deg)}}'; document.head.appendChild(st); })();
 
-async function netlifyGet(){
-  const resp = await fetch('/api/sync', { method:'GET' });
+// ── Low-level blob GET / PUT ──────────────────────────────────────────────────
+async function blobGet(key){
+  const resp = await fetch(`/api/sync?key=${encodeURIComponent(key)}`);
   if(resp.status===404) return null;
-  if(!resp.ok) throw new Error(`Sync GET failed (${resp.status})`);
+  if(!resp.ok) throw new Error(`GET ${key} failed (${resp.status})`);
   return await resp.json();
 }
 
-async function netlifyPut(data){
-  const resp = await fetch('/api/sync', {
+async function blobPut(key, data){
+  const resp = await fetch(`/api/sync?key=${encodeURIComponent(key)}`, {
     method: 'PUT',
     headers: { 'Content-Type':'application/json' },
     body: JSON.stringify(data),
   });
-  if(!resp.ok) throw new Error(`Sync PUT failed (${resp.status})`);
+  if(!resp.ok) throw new Error(`PUT ${key} failed (${resp.status})`);
 }
 
-function bundleLocalData(){
-  return {
-    version:  2,
+async function blobDelete(key){
+  await fetch(`/api/sync?key=${encodeURIComponent(key)}`, { method:'DELETE' });
+}
+
+// ── Screenshot sync ───────────────────────────────────────────────────────────
+// Screenshots are stored as separate blobs, never in the meta bundle.
+// trade._hasScreenshots / eod._hasScreenshots = flag that a blob exists.
+
+async function pushScreenshotsForTrade(tradeId, screenshots){
+  if(!isHosted()||location.hostname==='localhost') return;
+  if(!screenshots||!screenshots.length) return;
+  try{ await blobPut(`tradelog-ss-trade-${tradeId}`, { screenshots }); }
+  catch(e){ console.warn('SS push failed:', e.message); }
+}
+
+async function pullScreenshotsForTrade(tradeId){
+  if(!isHosted()||location.hostname==='localhost') return null;
+  try{
+    const data = await blobGet(`tradelog-ss-trade-${tradeId}`);
+    return data?.screenshots || null;
+  }catch(e){ return null; }
+}
+
+async function deleteScreenshotsForTrade(tradeId){
+  if(!isHosted()||location.hostname==='localhost') return;
+  try{ await blobDelete(`tradelog-ss-trade-${tradeId}`); }catch(e){}
+}
+
+async function pushScreenshotsForEod(eodId, screenshots){
+  if(!isHosted()||location.hostname==='localhost') return;
+  if(!screenshots||!screenshots.length) return;
+  try{ await blobPut(`tradelog-ss-eod-${eodId}`, { screenshots }); }
+  catch(e){ console.warn('EOD SS push failed:', e.message); }
+}
+
+async function pullScreenshotsForEod(eodId){
+  if(!isHosted()||location.hostname==='localhost') return null;
+  try{
+    const data = await blobGet(`tradelog-ss-eod-${eodId}`);
+    return data?.screenshots || null;
+  }catch(e){ return null; }
+}
+
+async function deleteScreenshotsForEod(eodId){
+  if(!isHosted()||location.hostname==='localhost') return;
+  try{ await blobDelete(`tradelog-ss-eod-${eodId}`); }catch(e){}
+}
+
+// Strip screenshots from trades/eods before saving to meta blob
+// Sets _hasScreenshots flag instead
+function stripScreenshotsFromMeta(metaObj){
+  const stripped = JSON.parse(JSON.stringify(metaObj));
+  (stripped.trades||[]).forEach(t=>{
+    if((t.screenshots&&t.screenshots.length)||t.screenshot){
+      t._hasScreenshots=true;
+      t.screenshots=[];
+      t.screenshot=null;
+    }
+  });
+  (stripped.eods||[]).forEach(e=>{
+    if(e.screenshots&&e.screenshots.length){
+      e._hasScreenshots=true;
+      e.screenshots=[];
+    }
+  });
+  return stripped;
+}
+function buildMetaBundle(){
+  const raw = {
+    version:  3,
     savedAt:  new Date().toISOString(),
     trades:   JSON.parse(localStorage.getItem('tradelog_v2')||'[]'),
     eods:     JSON.parse(localStorage.getItem('tradelog_eods_v1')||'[]'),
@@ -4181,11 +4288,12 @@ function bundleLocalData(){
     accounts: JSON.parse(localStorage.getItem('tradelog_accounts_v1')||'[]'),
     theme:    localStorage.getItem('tradelog_theme')||'dark',
   };
+  // Strip screenshots — they live in their own blobs
+  return stripScreenshotsFromMeta(raw);
 }
 
-function applyCloudBundle(bundle){
+function applyMetaBundle(bundle){
   if(!bundle) return;
-  // Merge cloud settings with defaults so arrays are never missing
   const cloudSettings = bundle.settings || {};
   const mergedSettings = {
     setups:  Array.isArray(cloudSettings.setups)  ? cloudSettings.setups  : [...DEFAULT_SETUPS],
@@ -4193,11 +4301,11 @@ function applyCloudBundle(bundle){
     eodTags: Array.isArray(cloudSettings.eodTags) ? cloudSettings.eodTags : [...DEFAULT_EOD_TAGS],
     ...cloudSettings,
   };
-  localStorage.setItem('tradelog_v2',               JSON.stringify(bundle.trades   ||[]));
-  localStorage.setItem('tradelog_eods_v1',          JSON.stringify(bundle.eods     ||[]));
-  localStorage.setItem('tradelog_eod_day_notes_v1', JSON.stringify(bundle.eodNotes ||{}));
-  localStorage.setItem('tradelog_settings_v1',      JSON.stringify(mergedSettings));
-  localStorage.setItem('tradelog_accounts_v1',      JSON.stringify(bundle.accounts ||[]));
+  localStorage.setItem('tradelog_v2',                   JSON.stringify(bundle.trades   ||[]));
+  localStorage.setItem('tradelog_eods_v1',              JSON.stringify(bundle.eods     ||[]));
+  localStorage.setItem('tradelog_eod_day_notes_v1',     JSON.stringify(bundle.eodNotes ||{}));
+  localStorage.setItem('tradelog_settings_v1',          JSON.stringify(mergedSettings));
+  localStorage.setItem('tradelog_accounts_v1',          JSON.stringify(bundle.accounts ||[]));
   if(bundle.theme) localStorage.setItem('tradelog_theme', bundle.theme);
   trades = loadTrades();
   eods   = loadEods();
@@ -4209,22 +4317,54 @@ function applyCloudBundle(bundle){
   updateStoragePill();
 }
 
+// ── CSV sync ──────────────────────────────────────────────────────────────────
+async function pushCsvForTrade(tradeId){
+  if(!isHosted()||location.hostname==='localhost') return;
+  const cache = loadCsvCache();
+  const entry = cache[tradeId];
+  if(!entry) return;
+  try{
+    await blobPut(`tradelog-csv-${tradeId}`, entry);
+  }catch(e){ console.warn('CSV push failed:', e.message); }
+}
+
+async function pullCsvForTrade(tradeId){
+  if(!isHosted()||location.hostname==='localhost') return;
+  // Already cached locally?
+  const cache = loadCsvCache();
+  if(cache[tradeId]) return;
+  try{
+    const data = await blobGet(`tradelog-csv-${tradeId}`);
+    if(data){
+      cache[tradeId] = data;
+      saveCsvCache(cache);
+    }
+  }catch(e){ console.warn('CSV pull failed:', e.message); }
+}
+
+// Delete CSV blob when a trade is deleted
+async function deleteCsvForTrade(tradeId){
+  if(!isHosted()||location.hostname==='localhost') return;
+  try{ await blobDelete(`tradelog-csv-${tradeId}`); }catch(e){}
+  // Also remove from local cache
+  const cache = loadCsvCache();
+  if(cache[tradeId]){ delete cache[tradeId]; saveCsvCache(cache); }
+}
+
+// ── Push / Pull everything ────────────────────────────────────────────────────
 let _syncTimer = null;
 function scheduleSync(){
-  if(!isHosted()){ return; }
+  if(!isHosted()) return;
   setSyncPill('saving','Saving…');
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(()=>pushToCloud(true), 2000);
 }
 
 async function pushToCloud(silent=false){
-  if(!isHosted()){
-    if(!silent) toast('Cloud sync only works when hosted on Netlify.',true);
-    return;
-  }
+  if(!isHosted()){ if(!silent) toast('Cloud sync only works when hosted on Netlify.',true); return; }
   setSyncPill('saving','Syncing…');
   try{
-    await netlifyPut(bundleLocalData());
+    await blobPut('tradelog-meta', buildMetaBundle());
     const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     setSyncPill('ok',`Saved ${t}`);
     if(!silent) toast('Pushed to cloud ✓');
@@ -4238,9 +4378,9 @@ async function pullFromCloud(){
   if(!isHosted()){ toast('Cloud sync only works when hosted on Netlify.',true); return; }
   setSyncPill('saving','Pulling…');
   try{
-    const bundle = await netlifyGet();
-    if(!bundle){ toast('No cloud data yet. Make a trade and it will sync.',true); setSyncPill('idle','No data'); return; }
-    applyCloudBundle(bundle);
+    const bundle = await blobGet('tradelog-meta');
+    if(!bundle){ setSyncPill('idle','No data'); return; }
+    applyMetaBundle(bundle);
     const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     setSyncPill('ok',`Pulled ${t}`);
     toast('Pulled from cloud ✓');
@@ -4250,11 +4390,8 @@ async function pullFromCloud(){
   }
 }
 
-async function manualSync(){
-  await pushToCloud(false);
-}
-
-function saveNetlifyToken(){ /* no-op — not needed with function-based auth */ }
+async function manualSync(){ await pushToCloud(false); }
+function saveNetlifyToken(){}
 function testNetlifySync(){ pushToCloud(false); }
 function netlifyConfigured(){ return isHosted(); }
 

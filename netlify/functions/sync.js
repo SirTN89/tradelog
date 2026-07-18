@@ -3,48 +3,46 @@ import { getStore } from '@netlify/blobs';
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
 };
 
+function json(data, status=200){
+  return new Response(JSON.stringify(data), {
+    status, headers: { ...CORS, 'Content-Type': 'application/json' }
+  });
+}
+
 export default async (req, context) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS });
-  }
+  if(req.method === 'OPTIONS') return new Response(null, { status:204, headers:CORS });
+
+  const url   = new URL(req.url);
+  const key   = url.searchParams.get('key') || 'meta'; // which blob to operate on
 
   try {
     const store = getStore({ name: 'tradelog', consistency: 'strong' });
 
-    if (req.method === 'GET') {
-      const data = await store.get('tradelog-data', { type: 'json' });
-      if (data === null) {
-        return new Response(JSON.stringify({ error: 'No data yet' }), {
-          status: 404,
-          headers: { ...CORS, 'Content-Type': 'application/json' }
-        });
-      }
-      return new Response(JSON.stringify(data), {
-        status: 200,
-        headers: { ...CORS, 'Content-Type': 'application/json' }
-      });
+    if(req.method === 'GET'){
+      const data = await store.get(key, { type: 'json' });
+      if(data === null) return json({ error: 'Not found' }, 404);
+      return json(data);
     }
 
-    if (req.method === 'PUT') {
+    if(req.method === 'PUT'){
       const body = await req.json();
-      await store.setJSON('tradelog-data', body);
-      return new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: CORS
-      });
+      await store.setJSON(key, body);
+      return json({ ok: true });
     }
 
-    return new Response('Method not allowed', { status: 405, headers: CORS });
+    if(req.method === 'DELETE'){
+      await store.delete(key);
+      return json({ ok: true });
+    }
 
-  } catch (err) {
+    return new Response('Method not allowed', { status:405, headers:CORS });
+
+  } catch(err) {
     console.error('Sync error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...CORS, 'Content-Type': 'application/json' }
-    });
+    return json({ error: err.message }, 500);
   }
 };
 
