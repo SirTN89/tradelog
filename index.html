@@ -5742,6 +5742,9 @@ function submitPbForm(){
     playbook.push(play);
   }
   savePlaybook(playbook);
+  // Push screenshots to their own blob
+  if(isHosted()&&play.screenshots&&play.screenshots.length)
+    pushScreenshotsForPlay(play.id, play.screenshots);
   closePbForm();
   renderPlaybook();
 }
@@ -5749,8 +5752,10 @@ function submitPbForm(){
 function deletePbPlay(){
   if(!_pbEditId) return;
   if(!confirm('Delete this play? This cannot be undone.')) return;
-  playbook=playbook.filter(p=>p.id!==_pbEditId);
+  const _delId=_pbEditId;
+  playbook=playbook.filter(p=>p.id!==_delId);
   savePlaybook(playbook);
+  deleteScreenshotsForPlay(_delId);
   closePbForm();
   renderPlaybook();
 }
@@ -5801,8 +5806,10 @@ function pbViewDelete(){
   document.getElementById('settings-confirm-title').textContent='Delete play?';
   document.getElementById('settings-confirm-msg').textContent=`"${play.name}" will be permanently deleted. This cannot be undone.`;
   document.getElementById('settings-confirm-ok').onclick=()=>{
-    playbook=playbook.filter(p=>p.id!==_pbViewId);
+    const _vdId=_pbViewId;
+    playbook=playbook.filter(p=>p.id!==_vdId);
     savePlaybook(playbook);
+    deleteScreenshotsForPlay(_vdId);
     closePbView();
     closeSettingsConfirm();
     renderPlaybook();
@@ -6235,39 +6242,37 @@ async function deleteScreenshotsForEod(eodId){
   try{ await blobDelete(`tradelog-ss-eod-${eodId}`); }catch(e){}
 }
 
-// Strip screenshots from trades/eods before saving to meta blob
-// Sets _hasScreenshots flag instead
-function stripScreenshotsFromMeta(metaObj){
-  const stripped = JSON.parse(JSON.stringify(metaObj));
-  (stripped.trades||[]).forEach(t=>{
-    if((t.screenshots&&t.screenshots.length)||t.screenshot){
-      t._hasScreenshots=true;
-      t.screenshots=[];
-      t.screenshot=null;
+// ── Blob structure (all separate, no size issues):
+//   tradelog-settings   → settings + accounts + theme (tiny)
+//   tradelog-trades     → trade metadata, no screenshots
+//   tradelog-eods       → EOD entries, no screenshots
+//   tradelog-eod-notes  → day-level notes
+//   tradelog-playbook   → playbook plays, no screenshots
+//   tradelog-ss-trade-{id}    → screenshots per trade (existing)
+//   tradelog-ss-eod-{id}      → screenshots per EOD (existing)
+//   tradelog-ss-play-{id}     → screenshots per playbook play (NEW)
+//   tradelog-csv-{id}         → chart CSV per trade (existing)
+
+// Strip screenshots from an array of objects, set _hasScreenshots flag
+function stripScreenshots(arr){
+  return (arr||[]).map(item=>{
+    if((item.screenshots&&item.screenshots.length)||item.screenshot){
+      const copy={...item,screenshots:[],screenshot:null,_hasScreenshots:true};
+      return copy;
     }
+    return item;
   });
-  (stripped.eods||[]).forEach(e=>{
-    if(e.screenshots&&e.screenshots.length){
-      e._hasScreenshots=true;
-      e.screenshots=[];
-    }
-  });
-  return stripped;
 }
+
 function buildMetaBundle(){
-  const raw = {
-    version:  4,
+  // Kept for backwards compat — used by old pullFromCloud path
+  return {
+    version:  5,
     savedAt:  new Date().toISOString(),
-    trades:   JSON.parse(localStorage.getItem('tradelog_v2')||'[]'),
-    eods:     JSON.parse(localStorage.getItem('tradelog_eods_v1')||'[]'),
-    eodNotes: JSON.parse(localStorage.getItem('tradelog_eod_day_notes_v1')||'{}'),
-    playbook: JSON.parse(localStorage.getItem('tradelog_playbook_v1')||'[]'),
     settings: JSON.parse(localStorage.getItem('tradelog_settings_v1')||'{}'),
     accounts: JSON.parse(localStorage.getItem('tradelog_accounts_v1')||'[]'),
     theme:    localStorage.getItem('tradelog_theme')||'dark',
   };
-  // Strip screenshots — they live in their own blobs
-  return stripScreenshotsFromMeta(raw);
 }
 
 function applyMetaBundle(bundle){
@@ -6279,23 +6284,42 @@ function applyMetaBundle(bundle){
     eodTags: Array.isArray(cloudSettings.eodTags) ? cloudSettings.eodTags : [...DEFAULT_EOD_TAGS],
     ...cloudSettings,
   };
-  localStorage.setItem('tradelog_v2',                   JSON.stringify(bundle.trades   ||[]));
-  localStorage.setItem('tradelog_eods_v1',              JSON.stringify(bundle.eods     ||[]));
-  localStorage.setItem('tradelog_eod_day_notes_v1',     JSON.stringify(bundle.eodNotes ||{}));
-  localStorage.setItem('tradelog_playbook_v1',          JSON.stringify(bundle.playbook ||[]));
-  localStorage.setItem('tradelog_settings_v1',          JSON.stringify(mergedSettings));
-  localStorage.setItem('tradelog_accounts_v1',          JSON.stringify(bundle.accounts ||[]));
+  localStorage.setItem('tradelog_settings_v1', JSON.stringify(mergedSettings));
+  localStorage.setItem('tradelog_accounts_v1', JSON.stringify(bundle.accounts||[]));
   if(bundle.theme) localStorage.setItem('tradelog_theme', bundle.theme);
-  trades = loadTrades();
-  eods   = loadEods();
+  // Handle old v4 bundles that still have trades/eods/playbook embedded
+  if(bundle.trades)   localStorage.setItem('tradelog_v2',                   JSON.stringify(bundle.trades));
+  if(bundle.eods)     localStorage.setItem('tradelog_eods_v1',              JSON.stringify(bundle.eods));
+  if(bundle.eodNotes) localStorage.setItem('tradelog_eod_day_notes_v1',     JSON.stringify(bundle.eodNotes));
+  if(bundle.playbook) localStorage.setItem('tradelog_playbook_v1',          JSON.stringify(bundle.playbook));
+}
+
+function applyAfterPull(){
+  trades   = loadTrades();
+  eods     = loadEods();
   playbook = loadPlaybook();
-  applyTheme(bundle.theme||'dark');
-  render();
-  renderJournalList();
-  renderEodCalendar();
-  renderPlaybook();
-  populateAccountDropdowns();
-  updateStoragePill();
+  applyTheme(localStorage.getItem('tradelog_theme')||'dark');
+  render(); renderJournalList(); renderEodCalendar(); renderPlaybook();
+  populateAccountDropdowns(); updateStoragePill();
+}
+
+// ── Playbook screenshot blobs ─────────────────────────────────────────────────
+async function pushScreenshotsForPlay(playId, screenshots){
+  if(!isHosted()||location.hostname==='localhost') return;
+  if(!screenshots||!screenshots.length) return;
+  try{ await blobPut(`tradelog-ss-play-${playId}`, { screenshots }); }
+  catch(e){ console.warn('Play SS push failed:', e.message); }
+}
+async function pullScreenshotsForPlay(playId){
+  if(!isHosted()||location.hostname==='localhost') return null;
+  try{
+    const data = await blobGet(`tradelog-ss-play-${playId}`);
+    return data?.screenshots||null;
+  }catch(e){ return null; }
+}
+async function deleteScreenshotsForPlay(playId){
+  if(!isHosted()||location.hostname==='localhost') return;
+  try{ await blobDelete(`tradelog-ss-play-${playId}`); }catch(e){}
 }
 
 // ── CSV sync ──────────────────────────────────────────────────────────────────
@@ -6345,7 +6369,25 @@ async function pushToCloud(silent=false){
   if(!isHosted()){ if(!silent) toast('Cloud sync only works when hosted on Netlify.',true); return; }
   setSyncPill('saving','Syncing…');
   try{
-    await blobPut('tradelog-meta', buildMetaBundle());
+    // Push each category as its own blob
+    const trades_raw = JSON.parse(localStorage.getItem('tradelog_v2')||'[]');
+    const eods_raw   = JSON.parse(localStorage.getItem('tradelog_eods_v1')||'[]');
+    const pb_raw     = JSON.parse(localStorage.getItem('tradelog_playbook_v1')||'[]');
+
+    await Promise.all([
+      blobPut('tradelog-settings', buildMetaBundle()),           // settings + accounts + theme
+      blobPut('tradelog-trades',   { trades: stripScreenshots(trades_raw) }),
+      blobPut('tradelog-eods',     { eods:   stripScreenshots(eods_raw),
+                                     eodNotes: JSON.parse(localStorage.getItem('tradelog_eod_day_notes_v1')||'{}') }),
+      blobPut('tradelog-playbook', { plays:  stripScreenshots(pb_raw) }),
+    ]);
+
+    // Push playbook screenshots separately (one blob per play)
+    for(const play of pb_raw){
+      if(play.screenshots&&play.screenshots.length)
+        await pushScreenshotsForPlay(play.id, play.screenshots);
+    }
+
     const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     setSyncPill('ok',`Saved ${t}`);
     if(!silent) toast('Pushed to cloud ✓');
@@ -6359,9 +6401,42 @@ async function pullFromCloud(){
   if(!isHosted()){ toast('Cloud sync only works when hosted on Netlify.',true); return; }
   setSyncPill('saving','Pulling…');
   try{
-    const bundle = await blobGet('tradelog-meta');
-    if(!bundle){ setSyncPill('idle','No data'); return; }
-    applyMetaBundle(bundle);
+    // Pull all blobs in parallel
+    const [settings, tradesBlob, eodsBlob, pbBlob] = await Promise.all([
+      blobGet('tradelog-settings'),
+      blobGet('tradelog-trades'),
+      blobGet('tradelog-eods'),
+      blobGet('tradelog-playbook'),
+    ]);
+
+    // Fallback: try old tradelog-meta for backwards compat
+    let oldMeta = null;
+    if(!tradesBlob && !eodsBlob){
+      oldMeta = await blobGet('tradelog-meta');
+    }
+
+    if(settings) applyMetaBundle(settings);
+    else if(oldMeta) applyMetaBundle(oldMeta);
+
+    if(tradesBlob?.trades)
+      localStorage.setItem('tradelog_v2', JSON.stringify(tradesBlob.trades));
+    if(eodsBlob?.eods)
+      localStorage.setItem('tradelog_eods_v1', JSON.stringify(eodsBlob.eods));
+    if(eodsBlob?.eodNotes)
+      localStorage.setItem('tradelog_eod_day_notes_v1', JSON.stringify(eodsBlob.eodNotes));
+    if(pbBlob?.plays){
+      // Pull screenshots back into playbook plays
+      const plays = pbBlob.plays;
+      for(const play of plays){
+        if(play._hasScreenshots){
+          const ss = await pullScreenshotsForPlay(play.id);
+          if(ss) play.screenshots = ss;
+        }
+      }
+      localStorage.setItem('tradelog_playbook_v1', JSON.stringify(plays));
+    }
+
+    applyAfterPull();
     const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     setSyncPill('ok',`Pulled ${t}`);
     toast('Pulled from cloud ✓');
