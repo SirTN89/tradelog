@@ -3209,6 +3209,9 @@ function removeScreenshotIdx(idx){
   t.screenshots.splice(idx,1);
   t.screenshot=null;
   saveTrades(trades);
+  // Re-push the updated screenshot blob (or delete it if none remain)
+  if(t.screenshots.length) pushScreenshotsForTrade(t.id, t.screenshots);
+  else deleteScreenshotsForTrade(t.id);
   renderScreenshotTab();
   toast('Screenshot removed.');
 }
@@ -4074,8 +4077,11 @@ function attachScreenshot(input){
   r.onload=e=>{
     const t=trades.find(x=>x.id===selectedTradeId);
     if(!t)return;
-    t.screenshot=e.target.result;
+    if(!t.screenshots)t.screenshots=t.screenshot?[t.screenshot]:[];
+    t.screenshots.push(e.target.result);
+    t.screenshot=null;
     saveTrades(trades);
+    pushScreenshotsForTrade(t.id, t.screenshots);
     const img=document.getElementById('jl-screenshot-img');
     img.src=e.target.result;img.style.display='block';
     toast('Screenshot saved.');
@@ -4151,7 +4157,11 @@ function attachScreenshot(input){
   const r=new FileReader();
   r.onload=e=>{
     const t=trades.find(x=>x.id===selectedTradeId);if(!t)return;
-    t.screenshot=e.target.result;saveTrades(trades);
+    if(!t.screenshots)t.screenshots=t.screenshot?[t.screenshot]:[];
+    t.screenshots.push(e.target.result);
+    t.screenshot=null;
+    saveTrades(trades);
+    pushScreenshotsForTrade(t.id, t.screenshots);
     const img=document.getElementById('jl-screenshot-img');
     img.src=e.target.result;img.style.display='block';
     toast('Screenshot saved.');
@@ -4957,6 +4967,7 @@ function submitEodForm(){
   }
   // Push screenshots to their own blob
   if(screenshots.length) pushScreenshotsForEod(savedEodId, screenshots);
+  else if(_eodEditingId) deleteScreenshotsForEod(savedEodId); // all removed during edit
   // Restore screenshots in memory for current session (so tab still shows them)
   const eodInMem = eods.find(x=>x.id===savedEodId);
   if(eodInMem) eodInMem.screenshots = screenshots;
@@ -5742,9 +5753,13 @@ function submitPbForm(){
     playbook.push(play);
   }
   savePlaybook(playbook);
-  // Push screenshots to their own blob
-  if(isHosted()&&play.screenshots&&play.screenshots.length)
-    pushScreenshotsForPlay(play.id, play.screenshots);
+  // Push or delete the screenshot blob
+  if(isHosted()){
+    if(play.screenshots&&play.screenshots.length)
+      pushScreenshotsForPlay(play.id, play.screenshots);
+    else if(_pbEditId)
+      deleteScreenshotsForPlay(play.id); // all screenshots removed during edit
+  }
   closePbForm();
   renderPlaybook();
 }
