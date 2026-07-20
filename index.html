@@ -7,11 +7,43 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&family=Geist+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Fira+Code:wght@400;500&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 <script>
-// Hide app until auth confirmed
-document.addEventListener("DOMContentLoaded", function(){
-  var overlay = document.getElementById("auth-overlay");
-  if(overlay) overlay.style.display="flex";
-});
+// ── Netlify Identity auth gate ──────────────────────────────────────────────
+// All auth logic lives here so it runs before any app code.
+window.__authToken = function(){ return null; };
+
+function _authShowApp(user){
+  var overlay = document.getElementById('auth-overlay');
+  var pill    = document.getElementById('auth-user-pill');
+  var label   = document.getElementById('auth-email-label');
+  if(overlay) overlay.style.display = 'none';
+  if(pill)    pill.style.display    = 'flex';
+  if(label)   label.textContent     = user.email;
+  window.__authToken = function(){
+    var u = netlifyIdentity.currentUser();
+    return u ? u.token.access_token : null;
+  };
+  // trigger cloud pull now that we are authenticated
+  if(typeof pullFromCloud === 'function' && typeof isHosted === 'function'){
+    if(isHosted() && location.hostname !== 'localhost'){
+      if(typeof setSyncPill === 'function') setSyncPill('saving','Loading…');
+      pullFromCloud().catch(function(){ if(typeof setSyncPill==='function') setSyncPill('idle','Ready'); });
+    }
+  }
+}
+
+function _authShowLogin(){
+  var overlay = document.getElementById('auth-overlay');
+  var pill    = document.getElementById('auth-user-pill');
+  if(overlay) overlay.style.display = 'flex';
+  if(pill)    pill.style.display    = 'none';
+  window.__authToken = function(){ return null; };
+}
+
+// Register listeners and init as soon as the widget script is parsed
+netlifyIdentity.on('init',   function(user){ user ? _authShowApp(user) : _authShowLogin(); });
+netlifyIdentity.on('login',  function(user){ netlifyIdentity.close(); _authShowApp(user); });
+netlifyIdentity.on('logout', function(){     _authShowLogin(); });
+netlifyIdentity.init();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -466,7 +498,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
 <div id="auth-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:#0d0f12;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px">
   <div style="font-family:monospace;font-size:22px;letter-spacing:.08em;color:#e8eaf0">TRADE<span style="color:#22c98a">///</span>LOG</div>
   <div style="font-family:monospace;font-size:13px;color:#6b7280">Sign in to access your journal</div>
-  <button onclick="netlifyIdentity.open('login')" style="font-size:14px;font-weight:500;padding:10px 28px;border-radius:8px;border:none;background:#22c98a;color:#000;cursor:pointer;margin-top:8px">Sign In</button>
+  <button onclick="(typeof netlifyIdentity!=='undefined' ? netlifyIdentity.open('login') : alert('Auth widget not loaded — check your internet connection'))" style="font-size:14px;font-weight:500;padding:10px 28px;border-radius:8px;border:none;background:#22c98a;color:#000;cursor:pointer;margin-top:8px">Sign In</button>
 </div>
 <nav class="nav">
   <div class="nav-logo">TRADE<span>///</span>LOG</div>
@@ -8751,55 +8783,7 @@ if(location.hostname === 'localhost'){
 
 
 
-// ══════════════════════════════════════════════════════════════════════════════
-// NETLIFY IDENTITY — Auth gate
-// ══════════════════════════════════════════════════════════════════════════════
-(function(){
-  const overlay = document.getElementById('auth-overlay');
-  const userPill = document.getElementById('auth-user-pill');
-  const emailLabel = document.getElementById('auth-email-label');
-
-  function getToken(){
-    const u = netlifyIdentity.currentUser();
-    return u ? u.token.access_token : null;
-  }
-
-  function showApp(user){
-    overlay.style.display = 'none';
-    userPill.style.display = 'flex';
-    emailLabel.textContent = user.email;
-    // expose token getter for blobGet/blobPut
-    window.__authToken = () => {
-      const u = netlifyIdentity.currentUser();
-      return u ? u.token.access_token : null;
-    };
-  }
-
-  function showLogin(){
-    overlay.style.display = 'flex';
-    userPill.style.display = 'none';
-    window.__authToken = () => null;
-  }
-
-  netlifyIdentity.on('login', user => {
-    netlifyIdentity.close();
-    showApp(user);
-    // trigger cloud pull now that we're authed
-    if(isHosted() && location.hostname !== 'localhost'){
-      setSyncPill('saving','Loading…');
-      pullFromCloud().catch(()=>{ setSyncPill('idle','Ready'); });
-    }
-  });
-
-  netlifyIdentity.on('logout', () => { showLogin(); });
-
-  netlifyIdentity.on('init', user => {
-    if(user){ showApp(user); }
-    else { showLogin(); }
-  });
-
-  netlifyIdentity.init();
-})();
+// Auth handled in head script
 
 </script>
 </body>
