@@ -442,19 +442,21 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
 #eod-f-textarea,#eod-day-notes{text-transform:none!important}
 
 /* ── AUTH ── */
-#auth-btn{font-family:var(--font-mono);font-size:12px;padding:4px 12px;border-radius:5px;border:0.5px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
-#auth-btn:hover{border-color:var(--accent);color:var(--text)}
-#auth-btn.owner{color:var(--green);border-color:rgba(34,201,138,.35)}
-#auth-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:3000;align-items:center;justify-content:center}
-#auth-modal-overlay.open{display:flex}
-#auth-modal{background:var(--surface);border:0.5px solid var(--border2);border-radius:10px;padding:28px;min-width:300px;max-width:360px;width:100%}
-#auth-modal h3{font-family:var(--font-mono);font-size:14px;font-weight:500;margin:0 0 6px}
-#auth-modal p{font-family:var(--font-mono);font-size:12px;color:var(--muted);margin:0 0 18px}
-#auth-pw-input{width:100%;box-sizing:border-box;background:var(--surface2);border:0.5px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:9px 12px;outline:none;transition:border-color .15s}
+#auth-wrap{position:relative;display:flex;align-items:center}
+#auth-icon-btn{display:flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;background:var(--surface2);border:0.5px solid var(--border2);border-radius:var(--radius);cursor:pointer;transition:background .15s;color:var(--text)}
+#auth-icon-btn:hover{background:#232730;border-color:rgba(255,255,255,.2)}
+#auth-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;min-width:130px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden}
+#auth-dropdown button{display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:none;font-family:var(--font-mono);font-size:13px;color:var(--text);cursor:pointer;transition:background .15s}
+#auth-dropdown button:hover{background:var(--surface2)}
+#auth-dd-logout{color:var(--red)!important}
+#auth-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:3000}
+#auth-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:0.5px solid var(--border2);border-radius:10px;padding:28px;width:320px;z-index:3001}
+#auth-modal h3{font-family:var(--font-mono);font-size:14px;font-weight:500;margin:0 0 18px;color:var(--text)}
+#auth-pw-input{width:100%;box-sizing:border-box;background:var(--surface2);border:0.5px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:9px 12px;outline:none;transition:border-color .15s;margin-bottom:8px}
 #auth-pw-input:focus{border-color:var(--accent)}
-#auth-error{font-family:var(--font-mono);font-size:12px;color:var(--red);margin:8px 0 0;min-height:16px}
-body.ro [data-write]{opacity:0.35;cursor:not-allowed;pointer-events:none;filter:grayscale(0.4)}
-body.ro .btn.danger{opacity:0.35;cursor:not-allowed;pointer-events:none;filter:grayscale(0.4)}
+#auth-error{font-family:var(--font-mono);font-size:12px;color:var(--red);min-height:16px;margin-bottom:12px}
+body.ro [data-write]{opacity:0.32;cursor:not-allowed;pointer-events:none;filter:grayscale(0.5)}
+body.ro .btn.danger{opacity:0.32;cursor:not-allowed;pointer-events:none;filter:grayscale(0.5)}
 body.ro #sync-pill{opacity:0.4}
 </style>
 
@@ -497,8 +499,19 @@ body.ro #sync-pill{opacity:0.4}
       </svg>
     </button>
     <button class="btn sm" onclick="openSettings()" title="Settings" style="font-size:15px;padding:5px 10px;line-height:1">&#9881;</button>
-    <!-- Auth button -->
-    <button id="auth-btn" onclick="openAuthModal()">🔒 Login</button>
+    <!-- Auth icon + dropdown -->
+    <div id="auth-wrap">
+      <button id="auth-icon-btn" onclick="toggleAuthDropdown(event)" title="Login / Logout">
+        <svg id="auth-icon-svg" width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="8" cy="5.5" r="2.5" stroke="var(--muted)" stroke-width="1.3"/>
+          <path d="M2.5 13.5C2.5 11 5 9 8 9s5.5 2 5.5 4.5" stroke="var(--muted)" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div id="auth-dropdown" style="display:none">
+        <button id="auth-dd-login" onclick="openAuthModal()">Log in</button>
+        <button id="auth-dd-logout" class="auth-dd-logout" onclick="doLogout()">Log out</button>
+      </div>
+    </div>
     <!-- Cloud sync indicator -->
     <div id="sync-pill" onclick="manualSync()" title="Cloud sync status" style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:13px;padding:4px 10px;border-radius:20px;background:var(--surface2);border:0.5px solid var(--border);cursor:pointer;transition:border-color .15s;white-space:nowrap;color:var(--muted)">
       <svg id="sync-icon" width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M9.5 5.5A4 4 0 1 1 5.5 1.5" stroke="var(--muted)" stroke-width="1.3" stroke-linecap="round"/><polyline points="7.5,0 9.5,1.5 8,3.5" fill="none" stroke="var(--muted)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -507,15 +520,14 @@ body.ro #sync-pill{opacity:0.4}
 </nav>
 
 <!-- Auth Modal -->
-<div id="auth-modal-overlay">
-  <div id="auth-modal">
-    <h3 id="auth-modal-title">Owner Login</h3>
-    <p>Enter your password to enable full access.</p>
+<div id="auth-modal-overlay" style="display:none" onclick="closeAuthModal()">
+  <div id="auth-modal" style="display:none">
+    <h3>Owner Login</h3>
     <input id="auth-pw-input" type="password" placeholder="Password" autocomplete="current-password"
       onkeydown="if(event.key==='Enter')submitAuthPassword()">
     <div id="auth-error"></div>
-    <div style="display:flex;gap:10px;margin-top:18px">
-      <button class="btn primary" onclick="submitAuthPassword()" style="flex:1">Unlock</button>
+    <div style="display:flex;gap:10px">
+      <button class="btn primary" onclick="submitAuthPassword()" style="flex:1">Log in</button>
       <button class="btn" onclick="closeAuthModal()">Cancel</button>
     </div>
   </div>
@@ -2292,6 +2304,11 @@ body.ro #sync-pill{opacity:0.4}
 <div id="toast"></div>
 
 <script>
+// ── Auth constants (defined first so all functions can reference them) ────────
+const AUTH_KEY = 'tradelog_write_token';
+function getWriteToken(){ return localStorage.getItem(AUTH_KEY) || ''; }
+function isOwner(){ return !!getWriteToken(); }
+
 // ── Storage ──────────────────────────────────────────────────────────────────
 const KEY='tradelog_v2';
 function loadTrades(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch{return[];}}
@@ -6527,7 +6544,7 @@ function attachScreenshot(input){
 }
 
 // ── Trade CRUD ────────────────────────────────────────────────────────────────
-function deleteTrade(id){trades=trades.filter(t=>t.id!==id);saveTrades(trades);render();if(document.getElementById('page-journal').classList.contains('active'))renderJournalList();toast('Trade removed.');}
+function deleteTrade(id){if(!isOwner()){toast('Read-only — log in to delete trades.',true);return;}trades=trades.filter(t=>t.id!==id);saveTrades(trades);render();if(document.getElementById('page-journal').classList.contains('active'))renderJournalList();toast('Trade removed.');}
 
 // ── CSV Import ────────────────────────────────────────────────────────────────
 function dzOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('drag');}
@@ -7833,6 +7850,7 @@ function submitEodForm(){
 }
 
 function deleteEod(){
+  if(!isOwner()){toast('Read-only — log in to delete EODs.',true);return;}
   if(!_eodEditingId) return;
   const btn = document.getElementById('eod-delete-btn');
   if(!btn.dataset.confirming){
@@ -10813,29 +10831,40 @@ window.addEventListener('popstate', handleHashRoute);
 setTimeout(handleHashRoute, 500); // after render() and pull complete
 
 // ══════════════════════════════════════════════════════════════════════════════
-// AUTH — password-based owner login
+// AUTH — password-based owner login with dropdown
 // ══════════════════════════════════════════════════════════════════════════════
 
-const AUTH_KEY = 'tradelog_write_token';
-function getWriteToken(){ return localStorage.getItem(AUTH_KEY) || ''; }
-function isOwner(){ return !!getWriteToken(); }
+function toggleAuthDropdown(e){
+  e.stopPropagation();
+  const dd = document.getElementById('auth-dropdown');
+  const isOpen = dd.style.display === 'block';
+  dd.style.display = isOpen ? 'none' : 'block';
+}
+// Close dropdown when clicking anywhere else
+document.addEventListener('click', () => {
+  const dd = document.getElementById('auth-dropdown');
+  if(dd) dd.style.display = 'none';
+});
 
 function openAuthModal(){
-  if(isOwner()){
-    if(confirm('You are logged in as owner. Log out?')){
-      localStorage.removeItem(AUTH_KEY);
-      applyAuthState();
-    }
-    return;
-  }
-  document.getElementById('auth-modal-overlay').classList.add('open');
+  document.getElementById('auth-dropdown').style.display = 'none';
+  document.getElementById('auth-modal-overlay').style.display = 'block';
+  document.getElementById('auth-modal').style.display = 'block';
   document.getElementById('auth-pw-input').value = '';
   document.getElementById('auth-error').textContent = '';
   setTimeout(() => document.getElementById('auth-pw-input').focus(), 50);
 }
 
 function closeAuthModal(){
-  document.getElementById('auth-modal-overlay').classList.remove('open');
+  document.getElementById('auth-modal-overlay').style.display = 'none';
+  document.getElementById('auth-modal').style.display = 'none';
+}
+
+function doLogout(){
+  document.getElementById('auth-dropdown').style.display = 'none';
+  localStorage.removeItem(AUTH_KEY);
+  applyAuthState();
+  toast('Logged out.');
 }
 
 async function submitAuthPassword(){
@@ -10864,13 +10893,27 @@ async function submitAuthPassword(){
 
 function applyAuthState(){
   const owner = isOwner();
-  const btn = document.getElementById('auth-btn');
-  if(btn){
-    btn.textContent = owner ? '✓ Owner' : '🔒 Login';
-    btn.classList.toggle('owner', owner);
+  const svg = document.getElementById('auth-icon-svg');
+  if(svg){
+    const stroke = owner ? 'var(--green)' : 'var(--muted)';
+    svg.querySelectorAll('circle,path').forEach(el => el.setAttribute('stroke', stroke));
   }
+  const ddLogin  = document.getElementById('auth-dd-login');
+  const ddLogout = document.getElementById('auth-dd-logout');
+  if(ddLogin)  ddLogin.style.display  = owner ? 'none'  : 'block';
+  if(ddLogout) ddLogout.style.display = owner ? 'block' : 'none';
   document.body.classList.toggle('ro', !owner);
 }
+
+// Guard delete functions
+const _origDeletePbPlay = deletePbPlay;
+deletePbPlay = () => { if(!isOwner()){ toast('Read-only — log in to delete plays.', true); return; } _origDeletePbPlay(); };
+
+const _origPbViewDelete = pbViewDelete;
+pbViewDelete = () => { if(!isOwner()){ toast('Read-only — log in to delete plays.', true); return; } _origPbViewDelete(); };
+
+const _origClearAll = clearAll;
+clearAll = () => { if(!isOwner()){ toast('Read-only — log in first.', true); return; } _origClearAll(); };
 
 // Guard write-action functions
 const _origOpenLogModal = openLogModal;
