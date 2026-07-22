@@ -7,11 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&family=Geist+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Fira+Code:wght@400;500&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-<script>
-  // Clerk publishable key — injected at runtime from meta tag
-  // (set CLERK_PUBLISHABLE_KEY in Netlify env, then it's written into the page
-  //  via a _headers file or we read it from a data attribute we set below)
-</script>
 <style>
 :root{--bg:#0d0f12;--surface:#13161b;--surface2:#1a1e25;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);--text:#e8eaf0;--muted:#6b7280;--green:#22c98a;--green-dim:rgba(34,201,138,0.13);--red:#f05c5c;--red-dim:rgba(240,92,92,0.13);--accent:#5b8def;--accent-dim:rgba(91,141,239,0.12);--font-mono:'DM Mono',monospace;--font-sans:'Inter',sans-serif;--radius:8px}
 [data-theme="light"]{--bg:#f0f2f5;--surface:#ffffff;--surface2:#e8eaed;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--text:#1a1d23;--muted:#7a8494;--green:#16a36e;--green-dim:rgba(22,163,110,0.12);--red:#d94040;--red-dim:rgba(217,64,64,0.10);--accent:#3b6fd4;--accent-dim:rgba(59,111,212,0.12)}
@@ -10823,14 +10818,20 @@ let _clerkTokenExp = 0;      // expiry timestamp (ms)
 let _clerkSignInComponent = null;
 let _clerkUserButtonComponent = null;
 
-// Read the publishable key from the <meta> tag injected at runtime
-function getClerkPublishableKey() {
-  const meta = document.querySelector('meta[name="clerk-publishable-key"]');
-  return meta ? meta.content : null;
+// Read the Clerk publishable key from our server (keeps it out of static HTML)
+async function getClerkPublishableKey() {
+  try {
+    const resp = await fetch('/api/clerk-config');
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data.publishableKey || null;
+  } catch (e) {
+    return null;
+  }
 }
 
 async function initClerk() {
-  const publishableKey = getClerkPublishableKey();
+  const publishableKey = await getClerkPublishableKey();
   if (!publishableKey || publishableKey === 'MISSING') {
     console.warn('Clerk publishable key not set. Auth disabled.');
     return;

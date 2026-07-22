@@ -6,9 +6,5 @@
   node_bundler = "esbuild"
 
 # Required environment variables (Netlify dashboard → Site settings → Environment variables):
-#   CLERK_PUBLISHABLE_KEY = pk_live_...   (from Clerk dashboard → API Keys)
-#   CLERK_SECRET_KEY      = sk_live_...   (from Clerk dashboard → API Keys)
-
-[[edge_functions]]
-  function = "inject-clerk-key"
-  path = "/"
+#   CLERK_PUBLISHABLE_KEY = pk_live_...   (NOT secret)
+#   CLERK_SECRET_KEY      = sk_live_...   (mark as secret)
