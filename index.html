@@ -145,6 +145,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-si
 .mini-cal .cal-day.sel-start.sel-end{border-radius:50%!important}
 .mini-cal .cal-day.no-data{opacity:.35}
 .cal-cell.win-day{background:rgba(34,201,138,0.07)}.cal-cell.loss-day{background:rgba(240,92,92,0.07)}
+.news-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px}
+.news-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block}
+.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}
+.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
 .week-summary{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .week-summary-header{padding:9px 14px;border-bottom:0.5px solid var(--border2);font-family:var(--font-mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .week-row{padding:9px 14px;border-bottom:0.5px solid var(--border);display:flex;flex-direction:column;gap:2px;flex:1}
@@ -642,7 +646,34 @@ body.ro #sync-pill{opacity:0.4}
           <span class="cal-month-label" id="cal-month-label"></span>
           <button onclick="calNext()">&#8250;</button>
         </div>
-        <button class="btn sm" onclick="calToday()">Today</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn sm" onclick="calToday()">Today</button>
+          <button class="btn sm" onclick="toggleCalNewsPanel()" title="News settings" style="padding:4px 8px">⚙</button>
+        </div>
+      </div>
+      <!-- News settings panel -->
+      <div id="cal-news-panel" style="display:none;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:14px 16px;margin-bottom:12px;display:none">
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Economic news</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:10px">
+          <input type="checkbox" id="cal-news-enabled" onchange="saveCalNewsSettings()" style="accent-color:var(--accent)">
+          Show economic events
+        </label>
+        <div id="cal-news-sub" style="padding-left:4px;display:flex;flex-direction:column;gap:8px">
+          <div>
+            <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:6px">IMPACT</div>
+            <div style="display:flex;gap:10px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="cal-news-high" onchange="saveCalNewsSettings()" style="accent-color:#e05252"> <span style="color:#e05252">High</span></label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="cal-news-medium" onchange="saveCalNewsSettings()" style="accent-color:#f0a05c"> <span style="color:#f0a05c">Medium</span></label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="cal-news-low" onchange="saveCalNewsSettings()" style="accent-color:var(--muted)"> Low</label>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:6px">COUNTRIES</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px" id="cal-news-countries">
+              ${['US','EU','GB','JP','CA','AU','CH','CN'].map(c=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;background:var(--surface2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border2)"><input type="checkbox" data-country="${c}" onchange="saveCalNewsSettings()" style="accent-color:var(--accent)"> ${c}</label>`).join('')}
+            </div>
+          </div>
+        </div>
       </div>
       <div class="cal-dow"><div class="cal-dow-cell">Sun</div><div class="cal-dow-cell">Mon</div><div class="cal-dow-cell">Tue</div><div class="cal-dow-cell">Wed</div><div class="cal-dow-cell">Thu</div><div class="cal-dow-cell">Fri</div><div class="cal-dow-cell">Sat</div></div>
       <div class="cal-days" id="cal-days"></div>
@@ -2771,7 +2802,7 @@ function openChartDayPopup(dateStr){
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 let _calTrades=[];
 
-function renderCalendar(ft){
+async function renderCalendar(ft){
   eods=loadEods(); // always fresh so EOD icons reflect latest changes
   _calTrades=ft;
   document.getElementById('cal-month-label').textContent=`${MONTHS[calMonth]} ${calYear}`;
@@ -2788,6 +2819,10 @@ function renderCalendar(ft){
       else if(_co==='be')dayMap[d].bes++;
     }
   });
+  // Fetch news for this month
+  const calNewsS = loadCalNewsSettings();
+  const newsEvents = calNewsS.enabled ? await fetchCalNews(calYear, calMonth) : [];
+
   const firstDow=new Date(calYear,calMonth,1).getDay();
   const dim=new Date(calYear,calMonth+1,0).getDate();
   const todayStr=new Date().toISOString().slice(0,10);
@@ -2800,6 +2835,7 @@ function renderCalendar(ft){
     let cls='cal-cell'+(info?(info.pnl>=0?' win-day':' loss-day')+' has-trades':'');
     const hasEod=eods.some(e=>e.date===ds);
     const eodIcon=hasEod?`<span title="EOD review available" style="position:absolute;top:4px;right:4px;cursor:pointer;line-height:1;color:var(--accent);display:flex" onclick="event.stopPropagation();openEodForDate('${ds}')"><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='8' y1='13' x2='16' y2='13'/><line x1='8' y1='17' x2='16' y2='17'/></svg></span>`:'';
+    const newsDots = getNewsDotsHtml(ds, newsEvents, calNewsS);
     html+=`<div class="${cls}" style="position:relative;${isToday?'box-shadow:0 0 0 2px var(--accent);':''}" ${info?`onclick="openDayPopup('${ds}')"`:''}>${eodIcon}<div class="day-num" style="${isToday?'color:var(--accent);font-weight:600':''}">${d}</div>`;
     if(info){
       html+=`<div class="day-pnl ${info.pnl>=0?'g':'r'}">${fm(info.pnl,0)}</div><div class="day-wl">`;
@@ -2808,7 +2844,7 @@ function renderCalendar(ft){
       if(info.bes>0)html+=`<span class="wl-badge" style="background:rgba(240,192,92,0.18);color:#f0c05c">${info.bes}BE</span>`;
       html+=`</div>`;
     }
-    html+=`</div>`;
+    html+=newsDots+`</div>`;
   }
   document.getElementById('cal-days').innerHTML=html;
   renderWeeklySummary(dayMap,firstDow,dim);
@@ -2896,6 +2932,104 @@ function renderLongShort(ft,dayMap){
     streakEl.textContent = '—';
     streakEl.className = 'ls-row-val';
   }
+}
+
+// ── Calendar news ─────────────────────────────────────────────────────────────
+const CAL_NEWS_KEY = 'tradelog_cal_news_settings';
+let _newsCache = {}; // { 'YYYY-MM': [...events] }
+let _newsTooltipEl = null;
+
+function loadCalNewsSettings(){
+  try{ return JSON.parse(localStorage.getItem(CAL_NEWS_KEY)) || {}; }catch{ return {}; }
+}
+function saveCalNewsSettings(){
+  if(!isOwner()){toast('Read-only — log in to change news settings.',true);return;}
+  const s = {
+    enabled: document.getElementById('cal-news-enabled')?.checked || false,
+    high:    document.getElementById('cal-news-high')?.checked || false,
+    medium:  document.getElementById('cal-news-medium')?.checked || false,
+    low:     document.getElementById('cal-news-low')?.checked || false,
+    countries: [...document.querySelectorAll('#cal-news-countries input[type=checkbox]:checked')].map(el=>el.dataset.country),
+  };
+  localStorage.setItem(CAL_NEWS_KEY, JSON.stringify(s));
+  renderCalendar(_calTrades);
+}
+function applyCalNewsSettings(){
+  const s = loadCalNewsSettings();
+  const el = id => document.getElementById(id);
+  if(el('cal-news-enabled')) el('cal-news-enabled').checked = s.enabled || false;
+  if(el('cal-news-high'))    el('cal-news-high').checked    = s.high !== false;
+  if(el('cal-news-medium'))  el('cal-news-medium').checked  = s.medium || false;
+  if(el('cal-news-low'))     el('cal-news-low').checked     = s.low    || false;
+  document.querySelectorAll('#cal-news-countries input[type=checkbox]').forEach(cb=>{
+    cb.checked = !s.countries || s.countries.length===0 || s.countries.includes(cb.dataset.country);
+  });
+}
+function toggleCalNewsPanel(){
+  const panel = document.getElementById('cal-news-panel');
+  if(!panel) return;
+  const open = panel.style.display === 'flex' || panel.style.display === 'block';
+  if(!open){
+    if(!isOwner()){toast('Read-only — log in to change news settings.',true);return;}
+    applyCalNewsSettings();
+    panel.style.display = 'block';
+  } else {
+    panel.style.display = 'none';
+  }
+}
+async function fetchCalNews(year, month){
+  const key = `${year}-${String(month+1).padStart(2,'0')}`;
+  if(_newsCache[key]) return _newsCache[key];
+  const from = `${year}-${String(month+1).padStart(2,'0')}-01`;
+  const lastDay = new Date(year, month+1, 0).getDate();
+  const to   = `${year}-${String(month+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  try{
+    const res = await fetch(`/api/news?from=${from}&to=${to}`);
+    if(!res.ok) return [];
+    const data = await res.json();
+    _newsCache[key] = Array.isArray(data) ? data : [];
+  } catch{ _newsCache[key] = []; }
+  return _newsCache[key];
+}
+function getNewsDotsHtml(ds, events, s){
+  if(!s.enabled || !events || !events.length) return '';
+  const countries = s.countries && s.countries.length ? s.countries : null;
+  const dayEvents = events.filter(e => {
+    if(e.date !== ds) return false;
+    if(countries && !countries.includes(e.country)) return false;
+    if(e.impact==='high'   && !s.high)   return false;
+    if(e.impact==='medium' && !s.medium) return false;
+    if(e.impact==='low'    && !s.low)    return false;
+    return true;
+  });
+  if(!dayEvents.length) return '';
+  return `<div class="news-dots">${dayEvents.map((e,i)=>`<span class="news-dot ${e.impact||'low'}" onclick="event.stopPropagation();showNewsTooltip(event,'${ds}',${i})" data-ndate="${ds}" data-nidx="${i}"></span>`).join('')}</div>`;
+}
+function showNewsTooltip(e, ds, idx){
+  hideNewsTooltip();
+  const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}`;
+  const events=(_newsCache[key]||[]).filter(ev=>ev.date===ds);
+  const ev=events[idx];if(!ev)return;
+  const impactColor=ev.impact==='high'?'#e05252':ev.impact==='medium'?'#f0a05c':'var(--muted)';
+  let html=`<div style="color:var(--text);font-weight:600;margin-bottom:4px">${ev.event}</div>`;
+  html+=`<div style="color:${impactColor};font-size:11px;text-transform:uppercase;margin-bottom:6px">${ev.impact||''} impact · ${ev.country} · ${ev.time||''}</div>`;
+  if(ev.actual!=null||ev.forecast!=null||ev.previous!=null){
+    html+=`<div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">`;
+    if(ev.actual!=null)   html+=`<span>A: <span style="color:var(--text)">${ev.actual}${ev.unit||''}</span></span>`;
+    if(ev.forecast!=null) html+=`<span>F: <span style="color:var(--text)">${ev.forecast}${ev.unit||''}</span></span>`;
+    if(ev.previous!=null) html+=`<span>P: <span style="color:var(--text)">${ev.previous}${ev.unit||''}</span></span>`;
+    html+=`</div>`;
+  }
+  const tip=document.createElement('div');
+  tip.className='news-tooltip';tip.innerHTML=html;
+  tip.style.left=`${Math.min(e.clientX+10, window.innerWidth-300)}px`;
+  tip.style.top=`${Math.min(e.clientY+10, window.innerHeight-120)}px`;
+  document.body.appendChild(tip);
+  _newsTooltipEl=tip;
+  setTimeout(()=>document.addEventListener('click',hideNewsTooltip,{once:true}),10);
+}
+function hideNewsTooltip(){
+  if(_newsTooltipEl){_newsTooltipEl.remove();_newsTooltipEl=null;}
 }
 
 function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}render();}
