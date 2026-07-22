@@ -440,6 +440,22 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
 .jl-notes-area,#jl-notes-area,#jl-bottom-content,#jl-bottom-content *,#jd-setup,#jd-tags,#pb-view-notes,#pb-notes,
 .pb-card-name,#eod-prev-notes,#eod-prev-mistakes,#eod-prev-lessons,
 #eod-f-textarea,#eod-day-notes{text-transform:none!important}
+
+/* ── AUTH ── */
+#auth-btn{font-family:var(--font-mono);font-size:12px;padding:4px 12px;border-radius:5px;border:0.5px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+#auth-btn:hover{border-color:var(--accent);color:var(--text)}
+#auth-btn.owner{color:var(--green);border-color:rgba(34,201,138,.35)}
+#auth-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:3000;align-items:center;justify-content:center}
+#auth-modal-overlay.open{display:flex}
+#auth-modal{background:var(--surface);border:0.5px solid var(--border2);border-radius:10px;padding:28px;min-width:300px;max-width:360px;width:100%}
+#auth-modal h3{font-family:var(--font-mono);font-size:14px;font-weight:500;margin:0 0 6px}
+#auth-modal p{font-family:var(--font-mono);font-size:12px;color:var(--muted);margin:0 0 18px}
+#auth-pw-input{width:100%;box-sizing:border-box;background:var(--surface2);border:0.5px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:9px 12px;outline:none;transition:border-color .15s}
+#auth-pw-input:focus{border-color:var(--accent)}
+#auth-error{font-family:var(--font-mono);font-size:12px;color:var(--red);margin:8px 0 0;min-height:16px}
+body.ro [data-write]{opacity:0.35;cursor:not-allowed;pointer-events:none;filter:grayscale(0.4)}
+body.ro .btn.danger{opacity:0.35;cursor:not-allowed;pointer-events:none;filter:grayscale(0.4)}
+body.ro #sync-pill{opacity:0.4}
 </style>
 
 </head>
@@ -481,12 +497,29 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
       </svg>
     </button>
     <button class="btn sm" onclick="openSettings()" title="Settings" style="font-size:15px;padding:5px 10px;line-height:1">&#9881;</button>
+    <!-- Auth button -->
+    <button id="auth-btn" onclick="openAuthModal()">🔒 Login</button>
     <!-- Cloud sync indicator -->
     <div id="sync-pill" onclick="manualSync()" title="Cloud sync status" style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:13px;padding:4px 10px;border-radius:20px;background:var(--surface2);border:0.5px solid var(--border);cursor:pointer;transition:border-color .15s;white-space:nowrap;color:var(--muted)">
       <svg id="sync-icon" width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M9.5 5.5A4 4 0 1 1 5.5 1.5" stroke="var(--muted)" stroke-width="1.3" stroke-linecap="round"/><polyline points="7.5,0 9.5,1.5 8,3.5" fill="none" stroke="var(--muted)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span id="sync-label">No sync</span>
     </div></div>
 </nav>
+
+<!-- Auth Modal -->
+<div id="auth-modal-overlay">
+  <div id="auth-modal">
+    <h3 id="auth-modal-title">Owner Login</h3>
+    <p>Enter your password to enable full access.</p>
+    <input id="auth-pw-input" type="password" placeholder="Password" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')submitAuthPassword()">
+    <div id="auth-error"></div>
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <button class="btn primary" onclick="submitAuthPassword()" style="flex:1">Unlock</button>
+      <button class="btn" onclick="closeAuthModal()">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <!-- Shared filter bar: shown on Dashboard and Reports pages -->
 <div id="shared-filter-bar" style="display:none;max-width:1320px;margin:0 auto;padding:16px 20px 0">
@@ -661,7 +694,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
       <div class="jl-left-header">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <span style="font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--text)">Trades</span>
-          <button class="btn primary sm" onclick="openLogModal()" style="display:flex;align-items:center;gap:5px;padding:5px 12px">
+          <button data-write class="btn primary sm" onclick="openLogModal()" style="display:flex;align-items:center;gap:5px;padding:5px 12px">
             <span style="font-size:14px;line-height:1">+</span> Log
           </button>
         </div>
@@ -843,7 +876,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
             <button class="jl-bottom-tab" onclick="setBottomTab('mistakes',this)">Mistakes</button>
             <button class="jl-bottom-tab" onclick="setBottomTab('lessons',this)">Lessons</button>
           </div>
-          <button onclick="openTemplateMenu('trade')" class="btn primary sm" style="display:flex;align-items:center;gap:4px;padding:3px 10px;margin-right:4px;font-size:12px"><span style="font-size:13px;line-height:1">+</span> Template</button>
+          <button data-write onclick="openTemplateMenu('trade')" class="btn primary sm" style="display:flex;align-items:center;gap:4px;padding:3px 10px;margin-right:4px;font-size:12px"><span style="font-size:13px;line-height:1">+</span> Template</button>
         </div>
         <div id="jl-bottom-content">
           <textarea class="jl-notes-area" id="jl-notes-area" rows="6" placeholder="Add notes for this trade…" oninput="autoSaveNote()"></textarea>
@@ -896,7 +929,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <span style="font-family:var(--font-mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">▣ Execution Stats</span>
             <div style="display:flex;gap:8px">
-              <button onclick="openEditModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;font-family:var(--font-mono)">✎ edit</button>
+              <button data-write onclick="openEditModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;font-family:var(--font-mono)">✎ edit</button>
               <button onclick="deleteSelectedTrade()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:var(--font-mono)">✕ delete</button>
             </div>
           </div>
@@ -1095,7 +1128,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
 <div class="page" id="page-playbook">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
     <h2 style="font-size:18px;font-weight:600;font-family:var(--font-sans)">Playbook</h2>
-    <button class="btn primary" onclick="openPlaybookForm(null)" style="display:flex;align-items:center;gap:6px">
+    <button data-write class="btn primary" onclick="openPlaybookForm(null)" style="display:flex;align-items:center;gap:6px">
       <span style="font-size:16px;line-height:1">+</span> Play
     </button>
   </div>
@@ -1106,11 +1139,10 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
 </div>
 
 <!-- Playbook Form Modal -->
-<div class="modal-bg" id="pb-form-bg" onclick="if(event.target===this)closePbForm()">
+<div class="modal-bg" id="pb-form-bg">
   <div class="modal" style="width:560px;max-width:97vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;padding:0">
     <div style="padding:16px 20px;border-bottom:0.5px solid var(--border2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
       <h3 id="pb-form-title" style="font-size:14px;font-weight:600">New Play</h3>
-      <button onclick="closePbForm()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px">
       <!-- Name -->
@@ -1149,7 +1181,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
         <div id="pb-tags-wrap" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:6px;min-height:38px"></div>
         <div style="display:flex;gap:6px;margin-top:6px">
           <input type="text" id="pb-custom-tag-input" class="log-input" placeholder="+ Custom tag…" style="flex:1;font-size:13px;padding:4px 8px" onkeydown="if(event.key==='Enter'){event.preventDefault();pbAddCustomTag();}">
-          <button class="btn sm primary" onclick="pbAddCustomTag()">Add tag</button>
+          <button data-write class="btn sm primary" onclick="pbAddCustomTag()">Add tag</button>
         </div>
       </div>
       <!-- Notes -->
@@ -1175,7 +1207,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
       <button class="btn danger sm" id="pb-delete-btn" style="display:none" onclick="deletePbPlay()">✕ Delete</button>
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn sm" onclick="closePbForm()">Cancel</button>
-        <button class="btn primary sm" onclick="submitPbForm()">Save Play</button>
+        <button data-write class="btn primary sm" onclick="submitPbForm()">Save Play</button>
       </div>
     </div>
   </div>
@@ -1191,7 +1223,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
         <div id="pb-view-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button onclick="pbViewEdit()" style="background:none;border:0.5px solid var(--border2);border-radius:5px;padding:4px 10px;color:var(--muted);font-family:var(--font-mono);font-size:13px;cursor:pointer">Edit</button>
+        <button data-write onclick="pbViewEdit()" style="background:none;border:0.5px solid var(--border2);border-radius:5px;padding:4px 10px;color:var(--muted);font-family:var(--font-mono);font-size:13px;cursor:pointer">Edit</button>
         <button onclick="pbViewDelete()" style="background:none;border:0.5px solid var(--red);border-radius:5px;padding:4px 10px;color:var(--red);font-family:var(--font-mono);font-size:13px;cursor:pointer">Delete</button>
         <button onclick="closePbView()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
       </div>
@@ -1503,7 +1535,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
         <div style="font-family:var(--font-mono);font-size:13px;color:var(--muted);margin-top:2px" id="eod-popup-count-label">No EODs</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn primary sm" onclick="openEodForm(null,_eodPopupDate)" style="display:flex;align-items:center;gap:5px"><span style="font-size:14px;line-height:1">+</span> EOD</button>
+        <button data-write class="btn primary sm" onclick="openEodForm(null,_eodPopupDate)" style="display:flex;align-items:center;gap:5px"><span style="font-size:14px;line-height:1">+</span> EOD</button>
         <button onclick="closeEodDayPopup()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1">✕</button>
       </div>
     </div>
@@ -1526,7 +1558,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
         <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-left:10px" id="eod-prev-date">—</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button onclick="openEodFormFromPreview()" style="font-family:var(--font-mono);font-size:12px;padding:4px 12px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:5px;color:var(--text);cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">✎ Edit</button>
+        <button data-write onclick="openEodFormFromPreview()" style="font-family:var(--font-mono);font-size:12px;padding:4px 12px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:5px;color:var(--text);cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">✎ Edit</button>
         <button onclick="closeEodPreview()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;line-height:1">✕</button>
       </div>
     </div>
@@ -1725,7 +1757,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
             <button class="jl-bottom-tab"        id="eod-tab-mistakes" onclick="setEodTab('mistakes',this)">Mistakes</button>
             <button class="jl-bottom-tab"        id="eod-tab-lessons"  onclick="setEodTab('lessons',this)">Lessons</button>
           </div>
-          <button onclick="openTemplateMenu('eod')" class="btn primary sm" style="display:flex;align-items:center;gap:4px;padding:3px 10px;margin-right:4px;margin-bottom:4px;font-size:12px"><span style="font-size:13px;line-height:1">+</span> Template</button>
+          <button data-write onclick="openTemplateMenu('eod')" class="btn primary sm" style="display:flex;align-items:center;gap:4px;padding:3px 10px;margin-right:4px;margin-bottom:4px;font-size:12px"><span style="font-size:13px;line-height:1">+</span> Template</button>
         </div>
         <textarea id="eod-f-textarea" rows="5" class="jl-notes-area" placeholder="Notes for this EOD…" style="resize:vertical"></textarea>
       </div>
@@ -1736,7 +1768,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
       <button class="btn danger sm" id="eod-delete-btn" onclick="deleteEod()" style="display:none">✕ Delete</button>
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn sm" onclick="closeEodForm()">Cancel</button>
-        <button class="btn primary sm" onclick="submitEodForm()">Save EOD</button>
+        <button data-write class="btn primary sm" onclick="submitEodForm()">Save EOD</button>
       </div>
     </div>
   </div>
@@ -1787,7 +1819,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
             <input type="date" id="settings-acct-date" class="log-input" title="Initial balance date">
           </div>
           <div style="margin-top:6px">
-            <button class="btn primary sm" onclick="addSettingAccount()">+ Add account</button>
+            <button data-write class="btn primary sm" onclick="addSettingAccount()">+ Add account</button>
           </div>
         </div>
 
@@ -1917,7 +1949,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
           <div class="settings-list" id="settings-tags-list"></div>
           <div class="settings-add-row">
             <input type="text" id="settings-tag-input" placeholder="Add tag…" onkeydown="if(event.key==='Enter')addSettingItem('tags','settings-tag-input')">
-            <button class="btn sm primary" onclick="addSettingItem('tags','settings-tag-input')">Add</button>
+            <button data-write class="btn sm primary" onclick="addSettingItem('tags','settings-tag-input')">Add</button>
           </div>
         </div>
         <!-- Models / Setups -->
@@ -1926,7 +1958,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
           <div class="settings-list" id="settings-setups-list"></div>
           <div class="settings-add-row">
             <input type="text" id="settings-setup-input" placeholder="Add model or setup…" onkeydown="if(event.key==='Enter')addSettingItem('setups','settings-setup-input')">
-            <button class="btn sm primary" onclick="addSettingItem('setups','settings-setup-input')">Add</button>
+            <button data-write class="btn sm primary" onclick="addSettingItem('setups','settings-setup-input')">Add</button>
           </div>
         </div>
         <!-- EOD Tags -->
@@ -1936,7 +1968,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
           <div class="settings-list" id="settings-eodtags-list"></div>
           <div class="settings-add-row">
             <input type="text" id="settings-eodtag-input" placeholder="Add EOD tag…" onkeydown="if(event.key==='Enter')addSettingItem('eodTags','settings-eodtag-input')">
-            <button class="btn sm primary" onclick="addSettingItem('eodTags','settings-eodtag-input')">Add</button>
+            <button data-write class="btn sm primary" onclick="addSettingItem('eodTags','settings-eodtag-input')">Add</button>
           </div>
         </div>
         <!-- Session Tags -->
@@ -1946,7 +1978,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
           <div class="settings-list" id="settings-sessiontags-list"></div>
           <div class="settings-add-row">
             <input type="text" id="settings-sessiontag-input" placeholder="Add session tag…" onkeydown="if(event.key==='Enter')addSettingItem('sessionTags','settings-sessiontag-input')">
-            <button class="btn sm primary" onclick="addSettingItem('sessionTags','settings-sessiontag-input')">Add</button>
+            <button data-write class="btn sm primary" onclick="addSettingItem('sessionTags','settings-sessiontag-input')">Add</button>
           </div>
         </div>
         <!-- Playbook Tags -->
@@ -1956,7 +1988,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
           <div class="settings-list" id="settings-pbtags-list"></div>
           <div class="settings-add-row">
             <input type="text" id="settings-pbtag-input" placeholder="Add Playbook tag…" onkeydown="if(event.key==='Enter')addSettingItem('pbTags','settings-pbtag-input')">
-            <button class="btn sm primary" onclick="addSettingItem('pbTags','settings-pbtag-input')">Add</button>
+            <button data-write class="btn sm primary" onclick="addSettingItem('pbTags','settings-pbtag-input')">Add</button>
           </div>
         </div>
       </div>
@@ -1975,7 +2007,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
             <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">New Template</div>
             <input type="text" id="tmpl-trade-name" class="log-input" placeholder="Template name…">
             <textarea id="tmpl-trade-body" class="jl-notes-area" rows="4" placeholder="Template content…" style="resize:vertical"></textarea>
-            <div><button class="btn primary sm" onclick="addTemplate('trade')">+ Save Template</button></div>
+            <div><button class="btn primary sm" data-write onclick="addTemplate('trade')">+ Save Template</button></div>
           </div>
           <div id="tmpl-trade-list" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
@@ -1986,7 +2018,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
             <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">New Template</div>
             <input type="text" id="tmpl-eod-name" class="log-input" placeholder="Template name…">
             <textarea id="tmpl-eod-body" class="jl-notes-area" rows="4" placeholder="Template content…" style="resize:vertical"></textarea>
-            <div><button class="btn primary sm" onclick="addTemplate('eod')">+ Save Template</button></div>
+            <div><button class="btn primary sm" data-write onclick="addTemplate('eod')">+ Save Template</button></div>
           </div>
           <div id="tmpl-eod-list" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
@@ -2163,7 +2195,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
     </div>
     <div class="log-modal-footer">
       <button class="btn" onclick="closeLogModal()">Cancel</button>
-      <button class="btn primary" onclick="submitLogTrade()" id="log-submit-btn">Log Trade</button>
+      <button data-write class="btn primary" onclick="submitLogTrade()" id="log-submit-btn">Log Trade</button>
     </div>
   </div>
 </div>
@@ -2181,7 +2213,7 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
     <textarea class="comment-textarea" id="comment-textarea" placeholder="Type your comment about this candle…" rows="4"></textarea>
     <div class="comment-modal-footer">
       <button class="btn" onclick="closeCommentModal()">Cancel</button>
-      <button class="btn primary" onclick="saveComment()">Save to Notes</button>
+      <button data-write class="btn primary" onclick="saveComment()">Save to Notes</button>
     </div>
   </div>
 </div>
@@ -2615,7 +2647,7 @@ function renderTable(ft){
     <td class="${be?'':''}${w?'g':be?'':'r'}" style="${be?'color:#f0c05c':''}">${be?'':w?'+':''}${fm(p)}</td>
     <td class="${rrCls}" style="font-family:var(--font-mono);font-size:13px">${rrStr}</td>
     <td><span class="tag ${tagCls}" style="${tagStyle}">${tagLbl}</span></td>
-    <td style="text-align:right"><span class="row-open-hint" style="opacity:0;transition:opacity .12s;font-size:13px;color:var(--muted);font-family:var(--font-mono);margin-right:4px">→ Journal</span><button class="btn sm" style="padding:3px 8px;font-size:13px;color:var(--muted)" onclick="event.stopPropagation();deleteTrade('${t.id}')">✕</button></td>
+    <td style="text-align:right"><span class="row-open-hint" style="opacity:0;transition:opacity .12s;font-size:13px;color:var(--muted);font-family:var(--font-mono);margin-right:4px">→ Journal</span><button class=data-write class="btn sm" style="padding:3px 8px;font-size:13px;color:var(--muted)" onclick="event.stopPropagation();deleteTrade('${t.id}')">✕</button></td>
   </tr>`;}).join('');
 }
 
@@ -7238,7 +7270,7 @@ function renderEodPopupList(dateStr){
           ${hasNotes?`<span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">📝</span>`:''}
         </div>
         <div style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()">
-          <button onclick="openEodForm('${e.id}')" style="font-family:var(--font-mono);font-size:12px;padding:3px 9px;background:var(--surface);border:0.5px solid var(--border2);border-radius:4px;color:var(--text);cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">Edit</button>
+          <button data-write onclick="openEodForm('${e.id}')" style="font-family:var(--font-mono);font-size:12px;padding:3px 9px;background:var(--surface);border:0.5px solid var(--border2);border-radius:4px;color:var(--text);cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">Edit</button>
           <button onclick="quickDeleteEod('${e.id}')" style="font-family:var(--font-mono);font-size:12px;padding:3px 9px;background:var(--red-dim);border:0.5px solid var(--red);border-radius:4px;color:var(--red);cursor:pointer;transition:opacity .15s" title="Delete EOD">✕</button>
         </div>
       </div>
@@ -10186,16 +10218,22 @@ async function blobGet(key){
 }
 
 async function blobPut(key, data){
+  if(!isOwner()){ throw new Error('Read-only: please log in to save changes.'); }
   const resp = await fetch(`/api/sync?key=${encodeURIComponent(key)}`, {
     method: 'PUT',
-    headers: { 'Content-Type':'application/json' },
+    headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${getWriteToken()}` },
     body: JSON.stringify(data),
   });
+  if(resp.status===401) throw new Error('Session expired — please log in again.');
   if(!resp.ok) throw new Error(`PUT ${key} failed (${resp.status})`);
 }
 
 async function blobDelete(key){
-  await fetch(`/api/sync?key=${encodeURIComponent(key)}`, { method:'DELETE' });
+  if(!isOwner()) return;
+  await fetch(`/api/sync?key=${encodeURIComponent(key)}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${getWriteToken()}` },
+  });
 }
 
 // ── Screenshot sync ───────────────────────────────────────────────────────────
@@ -10360,6 +10398,7 @@ async function deleteCsvForTrade(tradeId){
 let _syncTimer = null;
 function scheduleSync(){
   if(!isHosted()) return;
+  if(!isOwner()) return;
   setSyncPill('saving','Saving…');
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(()=>pushToCloud(true), 2000);
@@ -10773,6 +10812,78 @@ function handleHashRoute(){
 window.addEventListener('popstate', handleHashRoute);
 setTimeout(handleHashRoute, 500); // after render() and pull complete
 
+// ══════════════════════════════════════════════════════════════════════════════
+// AUTH — password-based owner login
+// ══════════════════════════════════════════════════════════════════════════════
+
+const AUTH_KEY = 'tradelog_write_token';
+function getWriteToken(){ return localStorage.getItem(AUTH_KEY) || ''; }
+function isOwner(){ return !!getWriteToken(); }
+
+function openAuthModal(){
+  if(isOwner()){
+    if(confirm('You are logged in as owner. Log out?')){
+      localStorage.removeItem(AUTH_KEY);
+      applyAuthState();
+    }
+    return;
+  }
+  document.getElementById('auth-modal-overlay').classList.add('open');
+  document.getElementById('auth-pw-input').value = '';
+  document.getElementById('auth-error').textContent = '';
+  setTimeout(() => document.getElementById('auth-pw-input').focus(), 50);
+}
+
+function closeAuthModal(){
+  document.getElementById('auth-modal-overlay').classList.remove('open');
+}
+
+async function submitAuthPassword(){
+  const pw = document.getElementById('auth-pw-input').value.trim();
+  if(!pw) return;
+  try {
+    const resp = await fetch('/api/sync?key=tradelog-auth-probe', {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${pw}` },
+      body: JSON.stringify({ _probe: true }),
+    });
+    if(resp.status === 401){
+      document.getElementById('auth-error').textContent = 'Incorrect password.';
+      document.getElementById('auth-pw-input').select();
+      return;
+    }
+    if(!resp.ok){ document.getElementById('auth-error').textContent = 'Server error. Try again.'; return; }
+    localStorage.setItem(AUTH_KEY, pw);
+    closeAuthModal();
+    applyAuthState();
+    toast('Logged in as owner ✓');
+  } catch(e) {
+    document.getElementById('auth-error').textContent = 'Connection error: ' + e.message;
+  }
+}
+
+function applyAuthState(){
+  const owner = isOwner();
+  const btn = document.getElementById('auth-btn');
+  if(btn){
+    btn.textContent = owner ? '✓ Owner' : '🔒 Login';
+    btn.classList.toggle('owner', owner);
+  }
+  document.body.classList.toggle('ro', !owner);
+}
+
+// Guard write-action functions
+const _origOpenLogModal = openLogModal;
+openLogModal = (id) => { if(!isOwner()){ toast('Read-only — log in to add trades.', true); return; } _origOpenLogModal(id); };
+
+const _origOpenEodForm = openEodForm;
+openEodForm = (id, d) => { if(!isOwner()){ toast('Read-only — log in to edit EODs.', true); return; } _origOpenEodForm(id, d); };
+
+const _origOpenPlaybookForm = openPlaybookForm;
+openPlaybookForm = (id) => { if(!isOwner()){ toast('Read-only — log in to edit the playbook.', true); return; } _origOpenPlaybookForm(id); };
+
+// Init on load
+applyAuthState();
 
 </script>
 </body>
