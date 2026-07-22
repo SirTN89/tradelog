@@ -9053,35 +9053,37 @@ function renderRangeAnalysis(filtered){
     const sessRows=[['Asia','rangeAsia','#f0c05c'],['London','rangeLondon','#a78bfa'],['NY AM','rangeNY','#5b8def'],['NY PM','rangeNYPM','#22c98a']];
     const allVals=sorted.flatMap(e=>sessRows.map(([,k])=>e[k]).filter(v=>v>0));
     const maxVal=allVals.length?Math.max(...allVals):1;
-    const BAR_H = 48;
-    let html=`<div style="min-width:${Math.max(600,sorted.length*56)}px">
+    const BAR_H = 80;
+    const BAR_W = 32;
+    const GROUP_GAP = 20;
+    const groupW = sessRows.length * BAR_W + GROUP_GAP;
+    const chartW = sorted.length * groupW + 60;
+
+    let html=`<div style="overflow-x:auto"><div style="min-width:${Math.max(500,chartW)}px">
       <!-- Bar chart -->
-      <div style="display:flex;gap:4px;align-items:flex-end;height:${BAR_H+30}px;padding:0 8px;margin-bottom:16px">
-        ${sorted.map(e=>`
-          <div style="display:flex;flex-direction:column;align-items:center;gap:1px;flex:1">
-            ${sessRows.map(([,k,col])=>{
-              const v=e[k];
-              const h=v>0?Math.max(3,Math.round(v/maxVal*BAR_H)):0;
-              return v>0?`<div title="${k.replace('range','')} ${v}pts" style="width:100%;height:${h}px;background:${col};border-radius:2px 2px 0 0;opacity:0.85;cursor:default"></div>`:`<div style="height:0"></div>`;
-            }).join('')}
-            <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:center;margin-top:4px">${e.date.slice(5)}</div>
-          </div>`).join('')}
+      <div style="display:flex;align-items:flex-end;gap:${GROUP_GAP}px;padding:0 8px ${BAR_H*0.15}px 8px;margin-bottom:8px;border-bottom:0.5px solid var(--border2)">
+        ${sorted.map(e=>{
+          const bars = sessRows.map(([name,k,col])=>{
+            const v=e[k];
+            const h=v>0?Math.max(4,Math.round(v/maxVal*BAR_H)):0;
+            return v>0
+              ? `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                  <div style="font-family:var(--font-mono);font-size:9px;color:${col};font-weight:600">${v}</div>
+                  <div title="${name}: ${v}pts" style="width:${BAR_W-4}px;height:${h}px;background:${col};border-radius:3px 3px 0 0;opacity:0.85"></div>
+                 </div>`
+              : `<div style="width:${BAR_W-4}px"></div>`;
+          }).join('');
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:0">
+            <div style="display:flex;align-items:flex-end;gap:2px">${bars}</div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;text-align:center">${e.date.slice(5)}</div>
+          </div>`;
+        }).join('')}
       </div>
       <!-- Legend -->
-      <div style="display:flex;gap:16px;padding:0 8px;margin-bottom:8px">
+      <div style="display:flex;gap:16px;padding:8px 8px 12px 8px">
         ${sessRows.map(([name,,col])=>`<span style="font-family:var(--font-mono);font-size:11px;color:${col};display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:${col};display:inline-block"></span>${name}</span>`).join('')}
       </div>
-      <!-- Data table -->
-      <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:11px">
-        <thead><tr><th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:0.5px solid var(--border2)">Session</th>
-        ${sorted.map(e=>`<th style="text-align:center;padding:3px 2px;color:var(--muted);font-weight:400;border-bottom:0.5px solid var(--border2);min-width:46px">${e.date.slice(5)}</th>`).join('')}
-        </tr></thead><tbody>`;
-    sessRows.forEach(([name,key,col])=>{
-      html+=`<tr><td style="padding:5px 8px;color:${col};border-bottom:0.5px solid var(--border);white-space:nowrap">${name}</td>`;
-      sorted.forEach(e=>{ const v=e[key]; html+=`<td style="text-align:center;padding:4px 2px;border-bottom:0.5px solid var(--border);color:${v>0?col:'var(--muted)'};font-weight:${v>0?'600':'400'}">${v>0?v:'—'}</td>`; });
-      html+='</tr>';
-    });
-    html+='</tbody></table></div>';
+      </div></div>`;
     tlEl.innerHTML=html;
   }
 }
@@ -9119,10 +9121,10 @@ function renderSessionsReport(){
       if(e.sessionNY)     base.sessionNY     = e.sessionNY;
       if(e.sessionNYPM)   base.sessionNYPM   = e.sessionNYPM;
       // Merge nr trades (sum)
-      if(e.nrAsia   != null) base.nrAsia   = (base.nrAsia  ||0) + e.nrAsia;
-      if(e.nrLondon != null) base.nrLondon = (base.nrLondon||0) + e.nrLondon;
-      if(e.nrNY     != null) base.nrNY     = (base.nrNY    ||0) + e.nrNY;
-      if(e.nrNYPM   != null) base.nrNYPM   = (base.nrNYPM  ||0) + e.nrNYPM;
+      if(e.nrAsia   != null) base.nrAsia   = Math.max(base.nrAsia  ||0, e.nrAsia);
+      if(e.nrLondon != null) base.nrLondon = Math.max(base.nrLondon||0, e.nrLondon);
+      if(e.nrNY     != null) base.nrNY     = Math.max(base.nrNY    ||0, e.nrNY);
+      if(e.nrNYPM   != null) base.nrNYPM   = Math.max(base.nrNYPM  ||0, e.nrNYPM);
       if(e.rangeAsia   != null) base.rangeAsia   = Math.max(base.rangeAsia||0, e.rangeAsia);
       if(e.rangeLondon != null) base.rangeLondon = Math.max(base.rangeLondon||0, e.rangeLondon);
       if(e.rangeNY     != null) base.rangeNY     = Math.max(base.rangeNY||0, e.rangeNY);
