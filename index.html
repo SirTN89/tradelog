@@ -440,30 +440,6 @@ input[type="date"].log-input::-webkit-calendar-picker-indicator:hover{opacity:1}
 .jl-notes-area,#jl-notes-area,#jl-bottom-content,#jl-bottom-content *,#jd-setup,#jd-tags,#pb-view-notes,#pb-notes,
 .pb-card-name,#eod-prev-notes,#eod-prev-mistakes,#eod-prev-lessons,
 #eod-f-textarea,#eod-day-notes{text-transform:none!important}
-
-/* ── CLERK AUTH ── */
-#clerk-login-btn{font-family:var(--font-mono);font-size:12px;padding:4px 12px;border-radius:5px;border:0.5px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
-#clerk-login-btn:hover{border-color:var(--accent);color:var(--text)}
-#clerk-login-btn.signed-in{color:var(--green);border-color:rgba(34,201,138,.35)}
-#clerk-user-avatar{width:20px;height:20px;border-radius:50%;object-fit:cover;display:none}
-#clerk-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:3000;align-items:center;justify-content:center}
-#clerk-modal-overlay.open{display:flex}
-#clerk-modal-box{background:var(--surface);border:0.5px solid var(--border2);border-radius:12px;padding:0;min-width:320px;max-width:420px;width:100%;overflow:hidden}
-#clerk-modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:0.5px solid var(--border2)}
-#clerk-modal-header h3{font-family:var(--font-mono);font-size:14px;font-weight:500;margin:0}
-#clerk-modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:0}
-#clerk-modal-body{padding:20px}
-#clerk-component-mount{min-height:60px}
-
-/* ── Read-only disabled state ── */
-/* Applied to <body> when not signed in. Targets all write-action buttons. */
-body.ro [data-write]         { opacity:0.35; cursor:not-allowed; pointer-events:none; filter:grayscale(0.4) }
-body.ro [data-write] *       { pointer-events:none }
-/* Also disable inline delete ✕ buttons in trade rows (rendered dynamically) */
-body.ro .btn.danger          { opacity:0.35; cursor:not-allowed; pointer-events:none; filter:grayscale(0.4) }
-body.ro .btn.danger *        { pointer-events:none }
-/* Dim the sync pill */
-body.ro #sync-pill           { opacity:0.4 }
 </style>
 
 </head>
@@ -505,30 +481,12 @@ body.ro #sync-pill           { opacity:0.4 }
       </svg>
     </button>
     <button class="btn sm" onclick="openSettings()" title="Settings" style="font-size:15px;padding:5px 10px;line-height:1">&#9881;</button>
-    <!-- Clerk auth button -->
-    <button id="clerk-login-btn" onclick="clerkOpenModal()" title="Login">
-      <img id="clerk-user-avatar" src="" alt="">
-      <span id="clerk-btn-label">Login</span>
-    </button>
     <!-- Cloud sync indicator -->
     <div id="sync-pill" onclick="manualSync()" title="Cloud sync status" style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:13px;padding:4px 10px;border-radius:20px;background:var(--surface2);border:0.5px solid var(--border);cursor:pointer;transition:border-color .15s;white-space:nowrap;color:var(--muted)">
       <svg id="sync-icon" width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M9.5 5.5A4 4 0 1 1 5.5 1.5" stroke="var(--muted)" stroke-width="1.3" stroke-linecap="round"/><polyline points="7.5,0 9.5,1.5 8,3.5" fill="none" stroke="var(--muted)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span id="sync-label">No sync</span>
     </div></div>
 </nav>
-
-<!-- Clerk Auth Modal -->
-<div id="clerk-modal-overlay" onclick="if(event.target===this)clerkCloseModal()">
-  <div id="clerk-modal-box">
-    <div id="clerk-modal-header">
-      <h3 id="clerk-modal-title">Sign in</h3>
-      <button id="clerk-modal-close" onclick="clerkCloseModal()">✕</button>
-    </div>
-    <div id="clerk-modal-body">
-      <div id="clerk-component-mount"></div>
-    </div>
-  </div>
-</div>
 
 <!-- Shared filter bar: shown on Dashboard and Reports pages -->
 <div id="shared-filter-bar" style="display:none;max-width:1320px;margin:0 auto;padding:16px 20px 0">
@@ -703,7 +661,7 @@ body.ro #sync-pill           { opacity:0.4 }
       <div class="jl-left-header">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <span style="font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--text)">Trades</span>
-          <button class="btn primary sm" data-write onclick="openLogModal()" style="display:flex;align-items:center;gap:5px;padding:5px 12px">
+          <button class="btn primary sm" onclick="openLogModal()" style="display:flex;align-items:center;gap:5px;padding:5px 12px">
             <span style="font-size:14px;line-height:1">+</span> Log
           </button>
         </div>
@@ -885,7 +843,7 @@ body.ro #sync-pill           { opacity:0.4 }
             <button class="jl-bottom-tab" onclick="setBottomTab('mistakes',this)">Mistakes</button>
             <button class="jl-bottom-tab" onclick="setBottomTab('lessons',this)">Lessons</button>
           </div>
-          <button data-write onclick="openTemplateMenu('trade')" class="btn primary sm" style="display:flex;align-items:center;gap:4px;padding:3px 10px;margin-right:4px;font-size:12px"><span style="font-size:13px;line-height:1">+</span> Template</button>
+          <button onclick="openTemplateMenu('trade')" class="btn primary sm" style="display:flex;align-items:center;gap:4px;padding:3px 10px;margin-right:4px;font-size:12px"><span style="font-size:13px;line-height:1">+</span> Template</button>
         </div>
         <div id="jl-bottom-content">
           <textarea class="jl-notes-area" id="jl-notes-area" rows="6" placeholder="Add notes for this trade…" oninput="autoSaveNote()"></textarea>
@@ -938,7 +896,7 @@ body.ro #sync-pill           { opacity:0.4 }
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <span style="font-family:var(--font-mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">▣ Execution Stats</span>
             <div style="display:flex;gap:8px">
-              <button data-write onclick="openEditModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;font-family:var(--font-mono)">✎ edit</button>
+              <button onclick="openEditModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;font-family:var(--font-mono)">✎ edit</button>
               <button onclick="deleteSelectedTrade()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-family:var(--font-mono)">✕ delete</button>
             </div>
           </div>
@@ -1137,7 +1095,7 @@ body.ro #sync-pill           { opacity:0.4 }
 <div class="page" id="page-playbook">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
     <h2 style="font-size:18px;font-weight:600;font-family:var(--font-sans)">Playbook</h2>
-    <button data-write class="btn primary" onclick="openPlaybookForm(null)" style="display:flex;align-items:center;gap:6px">
+    <button class="btn primary" onclick="openPlaybookForm(null)" style="display:flex;align-items:center;gap:6px">
       <span style="font-size:16px;line-height:1">+</span> Play
     </button>
   </div>
@@ -1191,7 +1149,7 @@ body.ro #sync-pill           { opacity:0.4 }
         <div id="pb-tags-wrap" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:6px;min-height:38px"></div>
         <div style="display:flex;gap:6px;margin-top:6px">
           <input type="text" id="pb-custom-tag-input" class="log-input" placeholder="+ Custom tag…" style="flex:1;font-size:13px;padding:4px 8px" onkeydown="if(event.key==='Enter'){event.preventDefault();pbAddCustomTag();}">
-          <button data-write class="btn sm primary" onclick="pbAddCustomTag()">Add tag</button>
+          <button class="btn sm primary" onclick="pbAddCustomTag()">Add tag</button>
         </div>
       </div>
       <!-- Notes -->
@@ -1217,7 +1175,7 @@ body.ro #sync-pill           { opacity:0.4 }
       <button class="btn danger sm" id="pb-delete-btn" style="display:none" onclick="deletePbPlay()">✕ Delete</button>
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn sm" onclick="closePbForm()">Cancel</button>
-        <button data-write class="btn primary sm" onclick="submitPbForm()">Save Play</button>
+        <button class="btn primary sm" onclick="submitPbForm()">Save Play</button>
       </div>
     </div>
   </div>
@@ -1233,7 +1191,7 @@ body.ro #sync-pill           { opacity:0.4 }
         <div id="pb-view-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button data-write onclick="pbViewEdit()" style="background:none;border:0.5px solid var(--border2);border-radius:5px;padding:4px 10px;color:var(--muted);font-family:var(--font-mono);font-size:13px;cursor:pointer">Edit</button>
+        <button onclick="pbViewEdit()" style="background:none;border:0.5px solid var(--border2);border-radius:5px;padding:4px 10px;color:var(--muted);font-family:var(--font-mono);font-size:13px;cursor:pointer">Edit</button>
         <button onclick="pbViewDelete()" style="background:none;border:0.5px solid var(--red);border-radius:5px;padding:4px 10px;color:var(--red);font-family:var(--font-mono);font-size:13px;cursor:pointer">Delete</button>
         <button onclick="closePbView()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
       </div>
@@ -1545,7 +1503,7 @@ body.ro #sync-pill           { opacity:0.4 }
         <div style="font-family:var(--font-mono);font-size:13px;color:var(--muted);margin-top:2px" id="eod-popup-count-label">No EODs</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button data-write class="btn primary sm" onclick="openEodForm(null,_eodPopupDate)" style="display:flex;align-items:center;gap:5px"><span style="font-size:14px;line-height:1">+</span> EOD</button>
+        <button class="btn primary sm" onclick="openEodForm(null,_eodPopupDate)" style="display:flex;align-items:center;gap:5px"><span style="font-size:14px;line-height:1">+</span> EOD</button>
         <button onclick="closeEodDayPopup()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1">✕</button>
       </div>
     </div>
@@ -1568,7 +1526,7 @@ body.ro #sync-pill           { opacity:0.4 }
         <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-left:10px" id="eod-prev-date">—</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button data-write onclick="openEodFormFromPreview()" style="font-family:var(--font-mono);font-size:12px;padding:4px 12px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:5px;color:var(--text);cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">✎ Edit</button>
+        <button onclick="openEodFormFromPreview()" style="font-family:var(--font-mono);font-size:12px;padding:4px 12px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:5px;color:var(--text);cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">✎ Edit</button>
         <button onclick="closeEodPreview()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;line-height:1">✕</button>
       </div>
     </div>
@@ -1767,7 +1725,7 @@ body.ro #sync-pill           { opacity:0.4 }
             <button class="jl-bottom-tab"        id="eod-tab-mistakes" onclick="setEodTab('mistakes',this)">Mistakes</button>
             <button class="jl-bottom-tab"        id="eod-tab-lessons"  onclick="setEodTab('lessons',this)">Lessons</button>
           </div>
-          <button data-write onclick="openTemplateMenu('eod')" class="btn primary sm" style="display:flex;align-items:center;gap:4px;padding:3px 10px;margin-right:4px;margin-bottom:4px;font-size:12px"><span style="font-size:13px;line-height:1">+</span> Template</button>
+          <button onclick="openTemplateMenu('eod')" class="btn primary sm" style="display:flex;align-items:center;gap:4px;padding:3px 10px;margin-right:4px;margin-bottom:4px;font-size:12px"><span style="font-size:13px;line-height:1">+</span> Template</button>
         </div>
         <textarea id="eod-f-textarea" rows="5" class="jl-notes-area" placeholder="Notes for this EOD…" style="resize:vertical"></textarea>
       </div>
@@ -1778,7 +1736,7 @@ body.ro #sync-pill           { opacity:0.4 }
       <button class="btn danger sm" id="eod-delete-btn" onclick="deleteEod()" style="display:none">✕ Delete</button>
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn sm" onclick="closeEodForm()">Cancel</button>
-        <button data-write class="btn primary sm" onclick="submitEodForm()">Save EOD</button>
+        <button class="btn primary sm" onclick="submitEodForm()">Save EOD</button>
       </div>
     </div>
   </div>
@@ -1829,7 +1787,7 @@ body.ro #sync-pill           { opacity:0.4 }
             <input type="date" id="settings-acct-date" class="log-input" title="Initial balance date">
           </div>
           <div style="margin-top:6px">
-            <button data-write class="btn primary sm" onclick="addSettingAccount()">+ Add account</button>
+            <button class="btn primary sm" onclick="addSettingAccount()">+ Add account</button>
           </div>
         </div>
 
@@ -1959,7 +1917,7 @@ body.ro #sync-pill           { opacity:0.4 }
           <div class="settings-list" id="settings-tags-list"></div>
           <div class="settings-add-row">
             <input type="text" id="settings-tag-input" placeholder="Add tag…" onkeydown="if(event.key==='Enter')addSettingItem('tags','settings-tag-input')">
-            <button data-write class="btn sm primary" onclick="addSettingItem('tags','settings-tag-input')">Add</button>
+            <button class="btn sm primary" onclick="addSettingItem('tags','settings-tag-input')">Add</button>
           </div>
         </div>
         <!-- Models / Setups -->
@@ -1968,7 +1926,7 @@ body.ro #sync-pill           { opacity:0.4 }
           <div class="settings-list" id="settings-setups-list"></div>
           <div class="settings-add-row">
             <input type="text" id="settings-setup-input" placeholder="Add model or setup…" onkeydown="if(event.key==='Enter')addSettingItem('setups','settings-setup-input')">
-            <button data-write class="btn sm primary" onclick="addSettingItem('setups','settings-setup-input')">Add</button>
+            <button class="btn sm primary" onclick="addSettingItem('setups','settings-setup-input')">Add</button>
           </div>
         </div>
         <!-- EOD Tags -->
@@ -1978,7 +1936,7 @@ body.ro #sync-pill           { opacity:0.4 }
           <div class="settings-list" id="settings-eodtags-list"></div>
           <div class="settings-add-row">
             <input type="text" id="settings-eodtag-input" placeholder="Add EOD tag…" onkeydown="if(event.key==='Enter')addSettingItem('eodTags','settings-eodtag-input')">
-            <button data-write class="btn sm primary" onclick="addSettingItem('eodTags','settings-eodtag-input')">Add</button>
+            <button class="btn sm primary" onclick="addSettingItem('eodTags','settings-eodtag-input')">Add</button>
           </div>
         </div>
         <!-- Session Tags -->
@@ -1988,7 +1946,7 @@ body.ro #sync-pill           { opacity:0.4 }
           <div class="settings-list" id="settings-sessiontags-list"></div>
           <div class="settings-add-row">
             <input type="text" id="settings-sessiontag-input" placeholder="Add session tag…" onkeydown="if(event.key==='Enter')addSettingItem('sessionTags','settings-sessiontag-input')">
-            <button data-write class="btn sm primary" onclick="addSettingItem('sessionTags','settings-sessiontag-input')">Add</button>
+            <button class="btn sm primary" onclick="addSettingItem('sessionTags','settings-sessiontag-input')">Add</button>
           </div>
         </div>
         <!-- Playbook Tags -->
@@ -1998,7 +1956,7 @@ body.ro #sync-pill           { opacity:0.4 }
           <div class="settings-list" id="settings-pbtags-list"></div>
           <div class="settings-add-row">
             <input type="text" id="settings-pbtag-input" placeholder="Add Playbook tag…" onkeydown="if(event.key==='Enter')addSettingItem('pbTags','settings-pbtag-input')">
-            <button data-write class="btn sm primary" onclick="addSettingItem('pbTags','settings-pbtag-input')">Add</button>
+            <button class="btn sm primary" onclick="addSettingItem('pbTags','settings-pbtag-input')">Add</button>
           </div>
         </div>
       </div>
@@ -2017,7 +1975,7 @@ body.ro #sync-pill           { opacity:0.4 }
             <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">New Template</div>
             <input type="text" id="tmpl-trade-name" class="log-input" placeholder="Template name…">
             <textarea id="tmpl-trade-body" class="jl-notes-area" rows="4" placeholder="Template content…" style="resize:vertical"></textarea>
-            <div><button data-write class="btn primary sm" onclick="addTemplate('trade')">+ Save Template</button></div>
+            <div><button class="btn primary sm" onclick="addTemplate('trade')">+ Save Template</button></div>
           </div>
           <div id="tmpl-trade-list" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
@@ -2028,7 +1986,7 @@ body.ro #sync-pill           { opacity:0.4 }
             <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">New Template</div>
             <input type="text" id="tmpl-eod-name" class="log-input" placeholder="Template name…">
             <textarea id="tmpl-eod-body" class="jl-notes-area" rows="4" placeholder="Template content…" style="resize:vertical"></textarea>
-            <div><button data-write class="btn primary sm" onclick="addTemplate('eod')">+ Save Template</button></div>
+            <div><button class="btn primary sm" onclick="addTemplate('eod')">+ Save Template</button></div>
           </div>
           <div id="tmpl-eod-list" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
@@ -2205,7 +2163,7 @@ body.ro #sync-pill           { opacity:0.4 }
     </div>
     <div class="log-modal-footer">
       <button class="btn" onclick="closeLogModal()">Cancel</button>
-      <button data-write class="btn primary" onclick="submitLogTrade()" id="log-submit-btn">Log Trade</button>
+      <button class="btn primary" onclick="submitLogTrade()" id="log-submit-btn">Log Trade</button>
     </div>
   </div>
 </div>
@@ -2223,7 +2181,7 @@ body.ro #sync-pill           { opacity:0.4 }
     <textarea class="comment-textarea" id="comment-textarea" placeholder="Type your comment about this candle…" rows="4"></textarea>
     <div class="comment-modal-footer">
       <button class="btn" onclick="closeCommentModal()">Cancel</button>
-      <button data-write class="btn primary" onclick="saveComment()">Save to Notes</button>
+      <button class="btn primary" onclick="saveComment()">Save to Notes</button>
     </div>
   </div>
 </div>
@@ -2657,7 +2615,7 @@ function renderTable(ft){
     <td class="${be?'':''}${w?'g':be?'':'r'}" style="${be?'color:#f0c05c':''}">${be?'':w?'+':''}${fm(p)}</td>
     <td class="${rrCls}" style="font-family:var(--font-mono);font-size:13px">${rrStr}</td>
     <td><span class="tag ${tagCls}" style="${tagStyle}">${tagLbl}</span></td>
-    <td style="text-align:right"><span class="row-open-hint" style="opacity:0;transition:opacity .12s;font-size:13px;color:var(--muted);font-family:var(--font-mono);margin-right:4px">→ Journal</span><button data-write class="btn sm" style="padding:3px 8px;font-size:13px;color:var(--muted)" onclick="event.stopPropagation();deleteTrade('${t.id}')">✕</button></td>
+    <td style="text-align:right"><span class="row-open-hint" style="opacity:0;transition:opacity .12s;font-size:13px;color:var(--muted);font-family:var(--font-mono);margin-right:4px">→ Journal</span><button class="btn sm" style="padding:3px 8px;font-size:13px;color:var(--muted)" onclick="event.stopPropagation();deleteTrade('${t.id}')">✕</button></td>
   </tr>`;}).join('');
 }
 
@@ -7280,7 +7238,7 @@ function renderEodPopupList(dateStr){
           ${hasNotes?`<span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">📝</span>`:''}
         </div>
         <div style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()">
-          <button data-write onclick="openEodForm('${e.id}')" style="font-family:var(--font-mono);font-size:12px;padding:3px 9px;background:var(--surface);border:0.5px solid var(--border2);border-radius:4px;color:var(--text);cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">Edit</button>
+          <button onclick="openEodForm('${e.id}')" style="font-family:var(--font-mono);font-size:12px;padding:3px 9px;background:var(--surface);border:0.5px solid var(--border2);border-radius:4px;color:var(--text);cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">Edit</button>
           <button onclick="quickDeleteEod('${e.id}')" style="font-family:var(--font-mono);font-size:12px;padding:3px 9px;background:var(--red-dim);border:0.5px solid var(--red);border-radius:4px;color:var(--red);cursor:pointer;transition:opacity .15s" title="Delete EOD">✕</button>
         </div>
       </div>
@@ -8832,7 +8790,7 @@ async function openPbView(id){
   const tagsWrap=document.getElementById('pb-view-tags');
   if(tagsWrap) tagsWrap.innerHTML=(play.tags||[]).map(t=>`<span style="font-family:var(--font-mono);font-size:13px;padding:3px 10px;border-radius:20px;border:0.5px solid #f97316;background:rgba(249,115,22,0.15);color:#f97316">${t}</span>`).join('');
   const ssWrap=document.getElementById('pb-view-screenshots');
-  ssWrap.innerHTML=(play.screenshots||[]).map(ss=>`<img src="${ss}" class="pb-ss-full" style="cursor:zoom-in" onclick="event.stopPropagation();openImgLightbox('${ss.replace(/'/g,"\\'")}')">`).join('');
+  ssWrap.innerHTML=(play.screenshots||[]).map(ss=>`<img src="${ss}" class="pb-ss-full" onclick="openImgLightbox('${ss.replace(/'/g,"\\'")}')" style="cursor:zoom-in">`).join('');
   document.getElementById('pb-view-notes').textContent=play.notes||'';
   document.getElementById('pb-view-bg').classList.add('open');
 }
@@ -10227,9 +10185,18 @@ async function blobGet(key){
   return await resp.json();
 }
 
-// blobPut and blobDelete are reassigned below with Clerk auth
-let blobPut = async (key, data) => { throw new Error('Auth not initialised yet'); };
-let blobDelete = async (key) => { /* no-op until auth ready */ };
+async function blobPut(key, data){
+  const resp = await fetch(`/api/sync?key=${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify(data),
+  });
+  if(!resp.ok) throw new Error(`PUT ${key} failed (${resp.status})`);
+}
+
+async function blobDelete(key){
+  await fetch(`/api/sync?key=${encodeURIComponent(key)}`, { method:'DELETE' });
+}
 
 // ── Screenshot sync ───────────────────────────────────────────────────────────
 // Screenshots are stored as separate blobs, never in the meta bundle.
@@ -10806,195 +10773,6 @@ function handleHashRoute(){
 window.addEventListener('popstate', handleHashRoute);
 setTimeout(handleHashRoute, 500); // after render() and pull complete
 
-// ══════════════════════════════════════════════════════════════════════════════
-// CLERK AUTH
-// Clerk's JS SDK is loaded dynamically using the publishable key from the
-// meta tag injected by the Netlify edge function (see netlify/functions/meta.js)
-// ══════════════════════════════════════════════════════════════════════════════
-
-let _clerkInstance = null;
-let _clerkToken = null;      // cached JWT, refreshed before expiry
-let _clerkTokenExp = 0;      // expiry timestamp (ms)
-let _clerkSignInComponent = null;
-let _clerkUserButtonComponent = null;
-
-// Clerk publishable key (public — safe to hardcode in frontend)
-async function getClerkPublishableKey() {
-  return 'pk_test_YmFsYW5jZWQtZ29iYmxlci02OC5jbGVyay5hY2NvdW50cy5kZXYk';
-}
-
-async function initClerk() {
-  const publishableKey = await getClerkPublishableKey();
-  if (!publishableKey || publishableKey === 'MISSING') {
-    console.warn('Clerk publishable key not set. Auth disabled.');
-    return;
-  }
-
-// Load Clerk's browser SDK (pinned to v5)
-  await new Promise((resolve, reject) => {
-    if (window.Clerk) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js';
-    s.crossOrigin = 'anonymous';
-    s.onload = resolve;
-    s.onerror = (e) => reject(new Error('Failed to load Clerk SDK'));
-    document.head.appendChild(s);
-  });
-
-  _clerkInstance = new window.Clerk(publishableKey);
-  await _clerkInstance.load();
-
-  // Listen for auth state changes
-  _clerkInstance.addListener(({ user }) => {
-    updateClerkUI(user);
-    applyAuthState(!!user);
-  });
-
-  // Initial state
-  updateClerkUI(_clerkInstance.user);
-  applyAuthState(!!_clerkInstance.user);
-}
-
-function updateClerkUI(user) {
-  const btn = document.getElementById('clerk-login-btn');
-  const label = document.getElementById('clerk-btn-label');
-  const avatar = document.getElementById('clerk-user-avatar');
-  if (!btn) return;
-
-  if (user) {
-    btn.classList.add('signed-in');
-    label.textContent = user.firstName || user.emailAddresses?.[0]?.emailAddress || 'Account';
-    btn.title = 'Click to manage account or sign out';
-    if (user.imageUrl) {
-      avatar.src = user.imageUrl;
-      avatar.style.display = 'block';
-    }
-  } else {
-    btn.classList.remove('signed-in');
-    label.textContent = 'Login';
-    btn.title = 'Sign in for full access';
-    avatar.style.display = 'none';
-  }
-}
-
-function applyAuthState(signedIn) {
-  document.body.classList.toggle('ro', !signedIn);
-}
-
-function isOwner() {
-  return !!(_clerkInstance && _clerkInstance.user);
-}
-
-async function getClerkToken() {
-  if (!_clerkInstance || !_clerkInstance.user) return null;
-  // Clerk's getToken() handles refresh automatically
-  try {
-    return await _clerkInstance.session.getToken();
-  } catch (e) {
-    console.warn('Could not get Clerk token:', e.message);
-    return null;
-  }
-}
-
-function clerkOpenModal() {
-  if (!_clerkInstance) {
-    toast('Auth not configured — set CLERK_PUBLISHABLE_KEY in Netlify.', true);
-    return;
-  }
-  if (_clerkInstance.user) {
-    // Already signed in — show user management (sign out option)
-    const overlay = document.getElementById('clerk-modal-overlay');
-    const title = document.getElementById('clerk-modal-title');
-    const mount = document.getElementById('clerk-component-mount');
-    title.textContent = 'Account';
-    mount.innerHTML = '';
-    overlay.classList.add('open');
-    _clerkInstance.mountUserProfile(mount, {
-      appearance: { variables: { colorPrimary: '#5b8def' } }
-    });
-    return;
-  }
-  // Show sign-in
-  const overlay = document.getElementById('clerk-modal-overlay');
-  const title = document.getElementById('clerk-modal-title');
-  const mount = document.getElementById('clerk-component-mount');
-  title.textContent = 'Sign in';
-  mount.innerHTML = '';
-  overlay.classList.add('open');
-  _clerkInstance.mountSignIn(mount, {
-    appearance: {
-      variables: { colorPrimary: '#5b8def', colorBackground: 'var(--surface)', colorText: 'var(--text)' }
-    },
-    afterSignInUrl: window.location.href,
-  });
-}
-
-function clerkCloseModal() {
-  const overlay = document.getElementById('clerk-modal-overlay');
-  overlay.classList.remove('open');
-  // Unmount Clerk component to free resources
-  const mount = document.getElementById('clerk-component-mount');
-  try { _clerkInstance?.unmountComponent(mount); } catch(e) {}
-  mount.innerHTML = '';
-}
-
-// ── Patch blobPut and blobDelete to send Clerk JWT ──────────────────────────
-
-blobPut = async (key, data) => {
-  if (!isOwner()) throw new Error('Read-only: please sign in to save changes.');
-  const token = await getClerkToken();
-  if (!token) throw new Error('Could not get auth token — please sign in again.');
-  const resp = await fetch(`/api/sync?key=${encodeURIComponent(key)}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify(data),
-  });
-  if (resp.status === 401) throw new Error('Session expired — please sign in again.');
-  if (!resp.ok) throw new Error(`PUT ${key} failed (${resp.status})`);
-};
-
-blobDelete = async (key) => {
-  if (!isOwner()) return; // silently skip in read-only mode
-  const token = await getClerkToken();
-  if (!token) return;
-  await fetch(`/api/sync?key=${encodeURIComponent(key)}`, {
-    method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${token}` },
-  });
-};
-
-// ── Gate write actions ────────────────────────────────────────────────────────
-
-const _origOpenLogModal = openLogModal;
-openLogModal = function(tradeId) {
-  if (!isOwner()) { toast('Read-only view — sign in to log trades.', true); return; }
-  _origOpenLogModal(tradeId);
-};
-
-const _origOpenEodForm = openEodForm;
-openEodForm = function(id, dateStr) {
-  if (!isOwner()) { toast('Read-only view — sign in to edit EODs.', true); return; }
-  _origOpenEodForm(id, dateStr);
-};
-
-const _origOpenPlaybookForm = openPlaybookForm;
-openPlaybookForm = function(id) {
-  if (!isOwner()) { toast('Read-only view — sign in to edit the playbook.', true); return; }
-  _origOpenPlaybookForm(id);
-};
-
-// Gate scheduleSync so read-only visitors never attempt writes
-const _origScheduleSync = scheduleSync;
-scheduleSync = function() {
-  if (!isOwner()) return;
-  _origScheduleSync();
-};
-
-// Boot Clerk on page load
-initClerk().catch(e => {
-  console.error('Clerk init failed:', e);
-  toast('Login unavailable: ' + e.message, true);
-});
 
 </script>
 </body>
