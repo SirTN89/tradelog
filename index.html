@@ -10818,16 +10818,9 @@ let _clerkTokenExp = 0;      // expiry timestamp (ms)
 let _clerkSignInComponent = null;
 let _clerkUserButtonComponent = null;
 
-// Read the Clerk publishable key from our server (keeps it out of static HTML)
+// Clerk publishable key (public — safe to hardcode in frontend)
 async function getClerkPublishableKey() {
-  try {
-    const resp = await fetch('/api/clerk-config');
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    return data.publishableKey || null;
-  } catch (e) {
-    return null;
-  }
+  return 'pk_test_YmFsYW5jZWQtZ29iYmxlci02OC5jbGVyay5hY2NvdW50cy5kZXYk';
 }
 
 async function initClerk() {
