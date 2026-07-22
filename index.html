@@ -10834,7 +10834,7 @@ async function initClerk() {
   await new Promise((resolve, reject) => {
     if (window.Clerk) { resolve(); return; }
     const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@4/dist/clerk.browser.js';
+    s.src = 'https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js';
     s.crossOrigin = 'anonymous';
     s.onload = resolve;
     s.onerror = (e) => reject(new Error('Failed to load Clerk SDK'));
