@@ -5,5 +5,16 @@
 [functions]
   node_bundler = "esbuild"
 
+[[redirects]]
+  from = "/api/sync"
+  to = "/.netlify/functions/sync"
+  status = 200
+
+[[redirects]]
+  from = "/api/news"
+  to = "/.netlify/functions/news"
+  status = 200
+
 # Required env var in Netlify dashboard → Site settings → Environment variables:
 #   WRITE_TOKEN = your-secret-password   (mark as secret)
+#   FINNHUB_KEY = your-finnhub-api-key
