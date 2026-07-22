@@ -1,7 +1,5 @@
 // Netlify function: /api/news?from=YYYY-MM-DD&to=YYYY-MM-DD
-// Fetches ForexFactory XML feeds, merges this+next week, caches per month in Blobs
-
-const { getStore } = require('@netlify/blobs');
+import { getStore } from '@netlify/blobs';
 
 const FF_FEEDS = [
   'https://nfs.faireconomy.media/ff_calendar_thisweek.xml',
@@ -18,20 +16,18 @@ function parseXML(xml) {
     };
     const title    = get('title');
     const country  = get('country');
-    const date     = get('date');     // e.g. "07-23-2026"
-    const time     = get('time');     // e.g. "8:30am"
-    const impact   = get('impact');   // High, Medium, Low, Holiday
+    const date     = get('date');
+    const time     = get('time');
+    const impact   = get('impact');
     const actual   = get('actual');
     const forecast = get('forecast');
     const previous = get('previous');
 
     if (!date || impact === 'Holiday') continue;
 
-    // Convert MM-DD-YYYY → YYYY-MM-DD
     const [mm, dd, yyyy] = date.split('-');
     const isoDate = `${yyyy}-${mm}-${dd}`;
 
-    // Convert "8:30am" → "08:30"
     let isoTime = '';
     const tm = time.match(/(\d+):(\d+)(am|pm)/i);
     if (tm) {
@@ -44,35 +40,33 @@ function parseXML(xml) {
     }
 
     events.push({
-      date:     isoDate,
-      time:     isoTime,
-      event:    title,
-      country:  country.toUpperCase(),
-      impact:   impact.toLowerCase(),
-      actual:   actual || null,
-      forecast: forecast || null,
-      previous: previous || null,
+      date: isoDate, time: isoTime, event: title,
+      country: country.toUpperCase(), impact: impact.toLowerCase(),
+      actual: actual || null, forecast: forecast || null, previous: previous || null,
     });
   }
   return events;
 }
 
-exports.handler = async (event) => {
+export default async (request, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Content-Type': 'application/json',
   };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+  if (request.method === 'OPTIONS') {
+    return new Response('', { status: 200, headers });
   }
 
-  const { from, to } = event.queryStringParameters || {};
+  const url = new URL(request.url);
+  const from = url.searchParams.get('from');
+  const to   = url.searchParams.get('to');
+
   if (!from || !to) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing from/to' }) };
+    return new Response(JSON.stringify({ error: 'Missing from/to' }), { status: 400, headers });
   }
 
-  const monthKey = `news-ff-${from.slice(0, 7)}`; // e.g. news-ff-2026-07
+  const monthKey = `news-ff-${from.slice(0, 7)}`;
 
   try {
     const store = getStore('tradelog');
@@ -81,15 +75,15 @@ exports.handler = async (event) => {
     try {
       const cached = await store.get(monthKey, { type: 'json' });
       if (cached && Array.isArray(cached)) {
-        return { statusCode: 200, headers, body: JSON.stringify(cached) };
+        return new Response(JSON.stringify(cached), { status: 200, headers });
       }
     } catch(_) {}
 
     // 2. Fetch both FF feeds
     const allEvents = [];
-    for (const url of FF_FEEDS) {
+    for (const feedUrl of FF_FEEDS) {
       try {
-        const res = await fetch(url, {
+        const res = await fetch(feedUrl, {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; tradelog/1.0)' }
         });
         if (res.ok) {
@@ -99,7 +93,7 @@ exports.handler = async (event) => {
       } catch(_) {}
     }
 
-    // Deduplicate by date+event+country
+    // Deduplicate
     const seen = new Set();
     const unique = allEvents.filter(e => {
       const k = `${e.date}|${e.event}|${e.country}`;
@@ -111,13 +105,15 @@ exports.handler = async (event) => {
     const monthStr = from.slice(0, 7);
     const monthEvents = unique.filter(e => e.date.startsWith(monthStr));
 
-    // 3. Save to Blobs if we got events for this month
+    // 3. Cache in Blobs
     if (monthEvents.length > 0) {
       try { await store.setJSON(monthKey, monthEvents); } catch(_) {}
     }
 
-    return { statusCode: 200, headers, body: JSON.stringify(monthEvents) };
+    return new Response(JSON.stringify(monthEvents), { status: 200, headers });
   } catch (err) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers });
   }
 };
+
+export const config = { path: '/api/news' };
