@@ -1605,9 +1605,15 @@ body.ro #sync-pill{opacity:0.4}
 <div id="eod-preview-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:450;align-items:center;justify-content:center" onclick="if(event.target===this)closeEodPreview()">
   <div style="background:var(--surface);border:0.5px solid var(--border2);border-radius:12px;width:760px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="padding:14px 18px;border-bottom:0.5px solid var(--border2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-      <div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-family:var(--font-mono);font-size:14px;font-weight:500;color:var(--text)" id="eod-prev-symbol">—</span>
-        <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-left:10px" id="eod-prev-date">—</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">·</span>
+        <span id="eod-prev-focus-wrap" style="display:none;align-items:center;gap:5px">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Session Focus:</span>
+          <span id="eod-prev-focus-tag" style="font-family:var(--font-mono);font-size:12px;color:var(--accent);background:var(--accent-dim);border-radius:4px;padding:1px 7px"></span>
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">·</span>
+        </span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)" id="eod-prev-date">—</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button data-write onclick="openEodFormFromPreview()" style="font-family:var(--font-mono);font-size:12px;padding:4px 12px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:5px;color:var(--text);cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">✎ Edit</button>
@@ -1854,6 +1860,7 @@ body.ro #sync-pill{opacity:0.4}
       <button class="stab"        id="stab-tags"       onclick="openSettingsTab('tags')"       style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Tags</button>
       <button class="stab"        id="stab-templates"  onclick="openSettingsTab('templates')"  style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Templates</button>
       <button class="stab"        id="stab-data"       onclick="openSettingsTab('data')"       style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Data</button>
+      <button class="stab"        id="stab-reminders"  onclick="openSettingsTab('reminders')"  style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Reminders</button>
     </div>
 
     <div class="settings-body">
@@ -2113,6 +2120,29 @@ body.ro #sync-pill{opacity:0.4}
         </div>
       </div>
 
+      <!-- ── REMINDERS TAB ── -->
+      <div id="stab-panel-reminders" class="stab-panel" style="display:none;padding:20px;display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <div style="font-family:var(--font-mono);font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">Trading Reminders</div>
+            <div style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">Messages shown only when logged in as owner. Won't interrupt active forms.</div>
+          </div>
+          <button class="btn primary sm" onclick="openReminderForm()" style="flex-shrink:0;margin-left:16px">+ Add</button>
+        </div>
+
+        <!-- Timezone for scheduled reminders -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--surface2);border-radius:8px;border:0.5px solid var(--border2)">
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">SCHEDULED TIMES IN</span>
+          <select id="reminder-tz" onchange="saveReminderTZ(this.value)" style="font-family:var(--font-mono);font-size:13px;padding:3px 8px;background:var(--surface);border:0.5px solid var(--border2);border-radius:6px;color:var(--text);cursor:pointer">
+            <option value="America/New_York">New York (ET)</option>
+            <option value="America/Chicago">Chicago (CT)</option>
+          </select>
+        </div>
+
+        <!-- Reminder list -->
+        <div id="reminder-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
     </div>
     <div class="settings-footer">
       <button class="btn" onclick="closeSettings()">Done</button>
@@ -2330,6 +2360,79 @@ body.ro #sync-pill{opacity:0.4}
 
 <!-- Storage modal -->
 
+
+<!-- Reminder form modal -->
+<div class="modal-bg" id="reminder-form-bg" style="z-index:600">
+  <div class="modal" style="width:480px;max-width:97vw;padding:0;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:0.5px solid var(--border2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <h3 id="reminder-form-title" style="font-size:14px;font-weight:600">New Reminder</h3>
+      <button onclick="closeReminderForm()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;overflow-y:auto">
+      <!-- Message -->
+      <div class="log-field">
+        <label>Message</label>
+        <textarea id="rf-message" class="log-input" rows="3" placeholder="e.g. Control your risk. Don't revenge trade." style="resize:vertical"></textarea>
+      </div>
+      <!-- Title (optional) -->
+      <div class="log-field">
+        <label>Title <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+        <input id="rf-title" type="text" class="log-input" placeholder="e.g. Pre-session reminder">
+      </div>
+      <!-- Type -->
+      <div class="log-field">
+        <label>Type</label>
+        <div style="display:flex;gap:8px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border-radius:6px;border:0.5px solid var(--border2);flex:1;justify-content:center" id="rf-type-scheduled-label">
+            <input type="radio" name="rf-type" value="scheduled" id="rf-type-scheduled" onchange="toggleReminderType()" style="accent-color:var(--accent)"> 🕐 Scheduled
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border-radius:6px;border:0.5px solid var(--border2);flex:1;justify-content:center" id="rf-type-random-label">
+            <input type="radio" name="rf-type" value="random" id="rf-type-random" onchange="toggleReminderType()" style="accent-color:var(--accent)"> 🎲 Random
+          </label>
+        </div>
+      </div>
+      <!-- Scheduled options -->
+      <div id="rf-scheduled-opts" style="display:flex;flex-direction:column;gap:10px">
+        <div class="log-field">
+          <label>Time <span id="rf-tz-label" style="color:var(--muted);font-weight:400"></span></label>
+          <input id="rf-time" type="time" class="log-input" value="09:25">
+        </div>
+        <div class="log-field">
+          <label>Days</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;background:var(--surface2);padding:3px 8px;border-radius:4px;border:0.5px solid var(--border2)"><input type="checkbox" class="rf-day" data-day="${d}" style="accent-color:var(--accent)" ${['Mon','Tue','Wed','Thu','Fri'].includes(d)?'checked':''}> ${d}</label>`).join('')}
+          </div>
+        </div>
+      </div>
+      <!-- Random options -->
+      <div id="rf-random-opts" style="display:none;flex-direction:column;gap:10px">
+        <div class="log-field">
+          <label>Show every</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="rf-interval" type="number" class="log-input" value="2" min="1" max="24" style="width:80px">
+            <span style="font-family:var(--font-mono);font-size:13px;color:var(--muted)">hours (±30 min random offset)</span>
+          </div>
+        </div>
+      </div>
+      <!-- Active toggle -->
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="rf-active" checked style="accent-color:var(--accent)"> Active
+      </label>
+    </div>
+    <div style="padding:12px 20px;border-top:0.5px solid var(--border2);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0">
+      <button class="btn sm" onclick="closeReminderForm()">Cancel</button>
+      <button class="btn primary sm" onclick="saveReminderForm()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reminder popup -->
+<div id="reminder-popup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9000;background:var(--surface);border:0.5px solid var(--border2);border-radius:14px;padding:28px 32px;max-width:420px;width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.7);text-align:center">
+  <div id="reminder-popup-title" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px"></div>
+  <div id="reminder-popup-message" style="font-size:18px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:20px"></div>
+  <button onclick="closeReminderPopup()" class="btn primary" style="min-width:100px">Got it</button>
+</div>
+<div id="reminder-popup-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8999" onclick="closeReminderPopup()"></div>
 
 <!-- Clear modal -->
 <div class="modal-bg" id="clear-modal">
@@ -6530,7 +6633,7 @@ function openLogModal(tradeId=null){
   document.getElementById('log-modal-bg').classList.add('open');
 }
 
-function closeLogModal(){document.getElementById('log-modal-bg').classList.remove('open');_editingTradeId=null;}
+function closeLogModal(){document.getElementById('log-modal-bg').classList.remove('open');_editingTradeId=null;checkPendingReminder();}
 function openEditModal(){if(selectedTradeId)openLogModal(selectedTradeId);}
 
 function duplicateTrade(id){
@@ -7074,6 +7177,206 @@ function exportCSV(){
 // ── Storage helpers ───────────────────────────────────────────────────────────
 function updateLastImport(){}
 function updateStoragePill(){} // no-op: storage pill removed; Blobs is source of truth
+
+// ── Reminders ─────────────────────────────────────────────────────────────────
+const REMINDER_TZ_KEY = 'tradelog_reminder_tz';
+let _reminders = [];
+let _reminderEditId = null;
+let _reminderTimer = null;
+let _pendingReminder = null; // queued while forms are open
+let _lastRandomFire = {}; // { reminderId: timestamp }
+
+function getReminderTZ(){ return localStorage.getItem(REMINDER_TZ_KEY) || 'America/New_York'; }
+function saveReminderTZ(tz){
+  localStorage.setItem(REMINDER_TZ_KEY, tz);
+  updateReminderTZLabel();
+}
+function updateReminderTZLabel(){
+  const tz = getReminderTZ();
+  const label = tz === 'America/Chicago' ? 'CT' : 'ET';
+  const el = document.getElementById('rf-tz-label');
+  if(el) el.textContent = `(${label})`;
+  const sel = document.getElementById('reminder-tz');
+  if(sel) sel.value = tz;
+}
+
+async function loadReminders(){
+  try{
+    const res = await fetch('/api/sync?key=reminders/list');
+    if(res.ok){ const d = await res.json(); _reminders = Array.isArray(d) ? d : []; }
+  }catch{ _reminders = []; }
+  renderReminderList();
+}
+async function saveReminders(){
+  _reminders = _reminders.filter(r=>r); // compact
+  try{
+    await fetch('/api/sync?key=reminders/list',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${getWriteToken()}`},
+      body: JSON.stringify(_reminders)
+    });
+  }catch{}
+  renderReminderList();
+}
+
+function renderReminderList(){
+  const el = document.getElementById('reminder-list');
+  if(!el) return;
+  if(!_reminders.length){
+    el.innerHTML = `<div style="font-family:var(--font-mono);font-size:13px;color:var(--muted);padding:20px 0;text-align:center">No reminders yet. Press + Add to create one.</div>`;
+    return;
+  }
+  const tz = getReminderTZ();
+  const tzLabel = tz === 'America/Chicago' ? 'CT' : 'ET';
+  el.innerHTML = _reminders.map(r=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;border:0.5px solid var(--border2);opacity:${r.active?1:.5}">
+      <div style="flex:1;min-width:0">
+        ${r.title?`<div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">${r.title}</div>`:''}
+        <div style="font-size:13px;color:var(--text);margin-bottom:4px">${r.message}</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--accent)">
+          ${r.type==='scheduled'
+            ? `🕐 ${r.time} ${tzLabel} · ${(r.days||[]).join(', ')}`
+            : `🎲 Every ~${r.interval||2}h randomly`}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button onclick="toggleReminderActive('${r.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted)" title="${r.active?'Disable':'Enable'}">${r.active?'⏸':'▶'}</button>
+        <button onclick="openReminderForm('${r.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted)" title="Edit">✎</button>
+        <button onclick="deleteReminder('${r.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--red)" title="Delete">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function openReminderForm(id=null){
+  _reminderEditId = id;
+  const r = id ? _reminders.find(x=>x.id===id) : null;
+  document.getElementById('reminder-form-title').textContent = id ? 'Edit Reminder' : 'New Reminder';
+  document.getElementById('rf-message').value = r?.message || '';
+  document.getElementById('rf-title').value = r?.title || '';
+  document.getElementById('rf-time').value = r?.time || '09:25';
+  document.getElementById('rf-interval').value = r?.interval || 2;
+  document.getElementById('rf-active').checked = r ? r.active : true;
+  const type = r?.type || 'scheduled';
+  document.getElementById('rf-type-scheduled').checked = type === 'scheduled';
+  document.getElementById('rf-type-random').checked = type === 'random';
+  // Set days
+  document.querySelectorAll('.rf-day').forEach(cb=>{
+    cb.checked = r?.days ? r.days.includes(cb.dataset.day) : ['Mon','Tue','Wed','Thu','Fri'].includes(cb.dataset.day);
+  });
+  toggleReminderType();
+  updateReminderTZLabel();
+  document.getElementById('reminder-form-bg').classList.add('open');
+}
+function closeReminderForm(){
+  document.getElementById('reminder-form-bg').classList.remove('open');
+  _reminderEditId = null;
+}
+function toggleReminderType(){
+  const isScheduled = document.getElementById('rf-type-scheduled').checked;
+  document.getElementById('rf-scheduled-opts').style.display = isScheduled ? 'flex' : 'none';
+  document.getElementById('rf-random-opts').style.display = isScheduled ? 'none' : 'flex';
+}
+function saveReminderForm(){
+  const message = document.getElementById('rf-message').value.trim();
+  if(!message){ toast('Message is required.',true); return; }
+  const type = document.getElementById('rf-type-scheduled').checked ? 'scheduled' : 'random';
+  const days = [...document.querySelectorAll('.rf-day:checked')].map(c=>c.dataset.day);
+  const r = {
+    id: _reminderEditId || uid(),
+    title: document.getElementById('rf-title').value.trim(),
+    message,
+    type,
+    time: document.getElementById('rf-time').value,
+    days: type==='scheduled' ? days : [],
+    interval: parseInt(document.getElementById('rf-interval').value)||2,
+    active: document.getElementById('rf-active').checked,
+  };
+  if(_reminderEditId){ const i=_reminders.findIndex(x=>x.id===_reminderEditId); if(i>=0)_reminders[i]=r; }
+  else _reminders.push(r);
+  saveReminders();
+  closeReminderForm();
+  toast('Reminder saved.');
+}
+function deleteReminder(id){
+  if(!confirm('Delete this reminder?')) return;
+  _reminders = _reminders.filter(r=>r.id!==id);
+  saveReminders();
+}
+function toggleReminderActive(id){
+  const r=_reminders.find(x=>x.id===id);
+  if(r){ r.active=!r.active; saveReminders(); }
+}
+
+// ── Popup ─────────────────────────────────────────────────────────────────────
+function isAnyFormOpen(){
+  return !!(
+    document.getElementById('eod-form-bg')?.style.display==='flex' ||
+    document.getElementById('pb-form-bg')?.classList.contains('open') ||
+    document.getElementById('log-modal-bg')?.classList.contains('open') ||
+    document.getElementById('settings-modal-bg')?.classList.contains('open')
+  );
+}
+function showReminderPopup(r){
+  if(isAnyFormOpen()){
+    _pendingReminder = r;
+    return;
+  }
+  document.getElementById('reminder-popup-title').textContent = r.title || '⏰ Reminder';
+  document.getElementById('reminder-popup-message').textContent = r.message;
+  document.getElementById('reminder-popup').style.display = 'block';
+  document.getElementById('reminder-popup-overlay').style.display = 'block';
+}
+function closeReminderPopup(){
+  document.getElementById('reminder-popup').style.display = 'none';
+  document.getElementById('reminder-popup-overlay').style.display = 'none';
+  _pendingReminder = null;
+}
+function checkPendingReminder(){
+  if(_pendingReminder && !isAnyFormOpen()){
+    const r = _pendingReminder;
+    _pendingReminder = null;
+    setTimeout(()=>showReminderPopup(r), 500);
+  }
+}
+
+// ── Scheduler ─────────────────────────────────────────────────────────────────
+function startReminderScheduler(){
+  if(_reminderTimer) clearInterval(_reminderTimer);
+  _reminderTimer = setInterval(tickReminders, 60000); // every minute
+  tickReminders(); // run once on start
+}
+function tickReminders(){
+  if(!isOwner() || !_reminders.length) return;
+  const now = new Date();
+  const tz = getReminderTZ();
+  const nowInTZ = new Date(now.toLocaleString('en-US', { timeZone: tz }));
+  const hhmm = `${String(nowInTZ.getHours()).padStart(2,'0')}:${String(nowInTZ.getMinutes()).padStart(2,'0')}`;
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const todayDay = dayNames[nowInTZ.getDay()];
+
+  for(const r of _reminders){
+    if(!r.active) continue;
+
+    if(r.type === 'scheduled'){
+      if(r.time === hhmm && (r.days||[]).includes(todayDay)){
+        // Only fire once per minute window
+        const fireKey = `${r.id}-${nowInTZ.toDateString()}-${hhmm}`;
+        if(_lastRandomFire[fireKey]) continue;
+        _lastRandomFire[fireKey] = Date.now();
+        showReminderPopup(r);
+      }
+    } else {
+      // Random — check if enough time has passed since last fire
+      const intervalMs = ((r.interval||2) * 60 * 60 * 1000);
+      const jitter = (Math.random() - 0.5) * 60 * 60 * 1000; // ±30 min
+      const last = _lastRandomFire[r.id] || 0;
+      if(Date.now() - last >= intervalMs + jitter){
+        _lastRandomFire[r.id] = Date.now();
+        showReminderPopup(r);
+      }
+    }
+  }
+}
 
 function openClearModal(){closeModals();document.getElementById('clear-modal').classList.add('open');}
 function closeModals(){document.querySelectorAll('.modal-bg').forEach(m=>m.classList.remove('open'));}
@@ -7644,8 +7947,10 @@ function renderEodPopupList(dateStr){
       onclick="openEodPreview('${e.id}')"
       onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasExtra?'6':'0'}px">
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--accent)">${e.symbol||'—'}</span>
+          ${e.sessionFocus && e.sessionFocus!=='All' ? `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">·</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Session Focus:</span><span style="font-family:var(--font-mono);font-size:12px;color:var(--accent);background:var(--accent-dim);border-radius:4px;padding:1px 7px">${e.sessionFocus}</span>` : ''}
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">·</span>
           ${hasSS?`<span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">📷 ${e.screenshots.length}</span>`:''}
           ${hasNotes?`<span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">📝</span>`:''}
         </div>
@@ -7655,7 +7960,6 @@ function renderEodPopupList(dateStr){
         </div>
       </div>
       ${sessGrid}
-      ${e.sessionFocus ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:${tags?'8':'0'}px"><span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Session Focus</span><span style="font-family:var(--font-mono);font-size:12px;color:var(--text);background:var(--surface2);border:0.5px solid var(--border2);border-radius:4px;padding:1px 7px">${e.sessionFocus}</span></div>` : ''}
       ${setups?`<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Setup / Model</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:${tags?'8':'0'}px">${setups}</div>`:''}\n      ${tags?`<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Tags</div><div style="display:flex;flex-wrap:wrap;gap:4px">${tags}</div>`:''}
     </div>`;
   }).join('');
@@ -7677,6 +7981,15 @@ async function openEodPreview(id){
 
   const [y,m,d] = (e.date||'').split('-').map(Number);
   document.getElementById('eod-prev-symbol').textContent = e.symbol || '—';
+  // Session focus in header
+  const focusWrapPrev = document.getElementById('eod-prev-focus-wrap');
+  const focusTagPrev  = document.getElementById('eod-prev-focus-tag');
+  if(e.sessionFocus && e.sessionFocus !== 'All'){
+    if(focusWrapPrev) focusWrapPrev.style.display = 'inline-flex';
+    if(focusTagPrev)  focusTagPrev.textContent = e.sessionFocus;
+  } else {
+    if(focusWrapPrev) focusWrapPrev.style.display = 'none';
+  }
   document.getElementById('eod-prev-date').textContent = (y&&m&&d) ? `${MONTHS[m-1]} ${d}, ${y}` : (e.date||'—');
 
   // Sessions — populate new table structure
@@ -8060,6 +8373,7 @@ function openEodForm(id, dateStr){
 function closeEodForm(){
   document.getElementById('eod-form-bg').style.display = 'none';
   _eodEditingId = null;
+  checkPendingReminder();
 }
 
 function setEodTab(tab, btn){
@@ -8474,7 +8788,7 @@ function insertTemplate(tmplId){
 }
 
 function openSettingsTab(tab){
-  ['cloud','accounts','appearance','tags','templates','data'].forEach(t=>{
+  ['cloud','accounts','appearance','tags','templates','data','reminders'].forEach(t=>{
     const btn   = document.getElementById('stab-'+t);
     const panel = document.getElementById('stab-panel-'+t);
     const active = t===tab;
@@ -8486,6 +8800,10 @@ function openSettingsTab(tab){
   });
   if(tab==='templates'){
     openTmplTab('trade');
+  }
+  if(tab==='reminders'){
+    if(isOwner()) loadReminders();
+    updateReminderTZLabel();
   }
 }
 
@@ -9118,6 +9436,7 @@ function openPlaybookForm(id){
 function closePbForm(){
   document.getElementById('pb-form-bg').classList.remove('open');
   _pbScreenshots = [];
+  checkPendingReminder();
 }
 
 function pbHandleFiles(files){
@@ -11189,6 +11508,9 @@ function toggleTradeAccount(acct){
 loadChartSettings(true);
 applyTheme(localStorage.getItem('tradelog_theme') || 'dark');
 applyAppearance();
+// Start reminder scheduler if owner
+if(isOwner()){ loadReminders().then(()=>startReminderScheduler()); }
+else { startReminderScheduler(); } // still tick (will noop if not owner)
 updateStoragePill();
 populateAccountDropdowns();
 render();
