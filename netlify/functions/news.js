@@ -9,6 +9,9 @@ const CURRENCY_TO_COUNTRY = {
   'CAD': 'CA', 'AUD': 'AU', 'CHF': 'CH', 'CNY': 'CN', 'NZD': 'NZ',
 };
 
+// Cache TTL: 4 hours for current week, permanent for past weeks
+const CURRENT_WEEK_TTL_MS = 4 * 60 * 60 * 1000;
+
 function parseXML(xml) {
   const events = [];
   const items = xml.match(/<event>([\s\S]*?)<\/event>/g) || [];
@@ -28,7 +31,6 @@ function parseXML(xml) {
 
     if (!date || impact === 'Holiday' || title === 'Bank Holiday') continue;
 
-    // FF format: MM-DD-YYYY
     const parts = date.split('-');
     let isoDate = date;
     if (parts.length === 3 && parts[2].length === 4) {
@@ -57,6 +59,12 @@ function parseXML(xml) {
   return events;
 }
 
+function isCurrentWeek(monthStr) {
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return monthStr === currentMonth;
+}
+
 export default async (request, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -76,22 +84,28 @@ export default async (request, context) => {
     return new Response(JSON.stringify({ error: 'Missing from/to' }), { status: 400, headers });
   }
 
-  const monthKey = `news-ff-${from.slice(0, 7)}`;
+  const monthStr = from.slice(0, 7);
+  const monthKey = `news/ff-${monthStr}`;
+  const isCurrent = isCurrentWeek(monthStr);
 
   try {
     const store = getStore('tradelog');
 
-    // 1. Check Blobs cache (skip if debug)
+    // Check cache — always use for past months, check TTL for current month
     if (!debug) {
       try {
-        const cached = await store.get(monthKey, { type: 'json' });
-        if (cached && Array.isArray(cached)) {
-          return new Response(JSON.stringify(cached), { status: 200, headers });
+        const cached = await store.getWithMetadata(monthKey, { type: 'json' });
+        if (cached && cached.data && Array.isArray(cached.data)) {
+          const age = Date.now() - (cached.metadata?.ts || 0);
+          if (!isCurrent || age < CURRENT_WEEK_TTL_MS) {
+            return new Response(JSON.stringify(cached.data), { status: 200, headers });
+          }
+          // Current month cache stale — fall through to re-fetch
         }
       } catch(_) {}
     }
 
-    // 2. Fetch FF feed
+    // Fetch from FF
     const allEvents = [];
     const debugInfo = [];
 
@@ -104,8 +118,7 @@ export default async (request, context) => {
         const parsed = parseXML(xml);
         if (debug) {
           debugInfo.push({
-            feed: feedUrl,
-            status: res.status,
+            feed: feedUrl, status: res.status,
             itemCount: (xml.match(/<event>/g) || []).length,
             parsedCount: parsed.length,
             sample: parsed.slice(0, 3),
@@ -131,12 +144,15 @@ export default async (request, context) => {
     });
 
     // Filter to requested month
-    const monthStr = from.slice(0, 7);
     const monthEvents = unique.filter(e => e.date.startsWith(monthStr));
 
-    // 3. Cache in Blobs
+    // Cache with timestamp
     if (monthEvents.length > 0) {
-      try { await store.setJSON(monthKey, monthEvents); } catch(_) {}
+      try {
+        await store.set(monthKey, JSON.stringify(monthEvents), {
+          metadata: { ts: Date.now() }
+        });
+      } catch(_) {}
     }
 
     return new Response(JSON.stringify(monthEvents), { status: 200, headers });
