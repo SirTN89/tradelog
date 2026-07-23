@@ -2110,7 +2110,7 @@ body.ro #sync-pill{opacity:0.4}
       </div>
 
       <!-- Storage Migration -->
-      <div class="settings-tab-panel" data-tab="migration" style="display:none;padding:20px">
+      <div id="stab-panel-migration" class="stab-panel" style="display:none;padding:20px">
         <div style="font-family:var(--font-mono);font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
           Reorganises Netlify Blobs from a flat structure into folders:<br>
           <code style="font-size:11px;color:var(--accent)">tradelog-ss-eod-{id}</code> →
@@ -8472,7 +8472,7 @@ function insertTemplate(tmplId){
 }
 
 function openSettingsTab(tab){
-  ['cloud','accounts','appearance','tags','templates','data'].forEach(t=>{
+  ['cloud','accounts','appearance','tags','templates','data','migration'].forEach(t=>{
     const btn   = document.getElementById('stab-'+t);
     const panel = document.getElementById('stab-panel-'+t);
     const active = t===tab;
