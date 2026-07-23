@@ -145,11 +145,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-si
 .mini-cal .cal-day.sel-start.sel-end{border-radius:50%!important}
 .mini-cal .cal-day.no-data{opacity:.35}
 .cal-cell.win-day{background:rgba(34,201,138,0.07)}.cal-cell.loss-day{background:rgba(240,92,92,0.07)}
-.news-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px}.news-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block}.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
-.news-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px}
-.news-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block}
-.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}
-.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
+.news-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto;padding-top:4px;opacity:0;transition:opacity .2s}.cal-cell:hover .news-dots{opacity:1}.news-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block;transition:transform .1s}.news-dot:hover{transform:scale(1.4)}.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
 .week-summary{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .week-summary-header{padding:9px 14px;border-bottom:0.5px solid var(--border2);font-family:var(--font-mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .week-row{padding:9px 14px;border-bottom:0.5px solid var(--border);display:flex;flex-direction:column;gap:2px;flex:1}
@@ -1999,6 +1995,15 @@ body.ro #sync-pill{opacity:0.4}
               </div>
             </div>
           </div>
+
+          <div style="margin-bottom:14px">
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">News event timezone</div>
+            <select id="s-news-tz" class="log-input" onchange="setNewsTZ(this.value)" style="max-width:320px">
+              <option value="America/New_York">New York (ET)</option>
+              <option value="America/Chicago">Chicago (CT)</option>
+            </select>
+          </div>
+
         </div>
       </div>
 
@@ -3043,19 +3048,48 @@ function getNewsDotsHtml(ds, events, s){
   if(!dayEvents.length) return '';
   return `<div class="news-dots">${dayEvents.map((e,i)=>`<span class="news-dot ${e.impact||'low'}" onclick="event.stopPropagation();showNewsTooltip(event,'${ds}',${i})" data-ndate="${ds}" data-nidx="${i}"></span>`).join('')}</div>`;
 }
+const NEWS_TZ_KEY = 'tradelog_news_tz';
+function getNewsTZ(){ return localStorage.getItem(NEWS_TZ_KEY) || 'America/New_York'; }
+function setNewsTZ(tz){
+  localStorage.setItem(NEWS_TZ_KEY, tz);
+  // Update select in settings if open
+  const sel = document.getElementById('s-news-tz');
+  if(sel) sel.value = tz;
+}
+function applyNewsTZSetting(){
+  const sel = document.getElementById('s-news-tz');
+  if(sel) sel.value = getNewsTZ();
+}
+function formatNewsTime(isoDate, isoTime){
+  if(!isoTime) return { display: '—', label: '' };
+  const tz = getNewsTZ();
+  const tzLabel = tz === 'America/Chicago' ? 'CT' : 'ET';
+  try {
+    // FF times are in GMT/UTC — convert to chosen timezone
+    const dt = new Date(`${isoDate}T${isoTime}:00Z`);
+    const display = dt.toLocaleTimeString('en-US', {
+      hour: '2-digit', minute: '2-digit', hour12: true, timeZone: tz
+    });
+    return { display, label: tzLabel };
+  } catch {
+    return { display: isoTime, label: tzLabel };
+  }
+}
+
 function showNewsTooltip(e, ds, idx){
   hideNewsTooltip();
   const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}`;
   const events=(_newsCache[key]||[]).filter(ev=>ev.date===ds);
   const ev=events[idx];if(!ev)return;
   const impactColor=ev.impact==='high'?'#e05252':ev.impact==='medium'?'#f0a05c':'var(--muted)';
+  const {display: timeDisplay, label: tzLabel} = formatNewsTime(ev.date, ev.time);
   let html=`<div style="color:var(--text);font-weight:600;margin-bottom:4px">${ev.event}</div>`;
-  html+=`<div style="color:${impactColor};font-size:11px;text-transform:uppercase;margin-bottom:6px">${ev.impact||''} impact · ${ev.country} · ${ev.time||''}</div>`;
+  html+=`<div style="color:${impactColor};font-size:11px;text-transform:uppercase;margin-bottom:6px">${ev.impact||''} impact · ${ev.country} · ${timeDisplay} ${tzLabel}</div>`;
   if(ev.actual!=null||ev.forecast!=null||ev.previous!=null){
     html+=`<div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">`;
-    if(ev.actual!=null)   html+=`<span>A: <span style="color:var(--text)">${ev.actual}${ev.unit||''}</span></span>`;
-    if(ev.forecast!=null) html+=`<span>F: <span style="color:var(--text)">${ev.forecast}${ev.unit||''}</span></span>`;
-    if(ev.previous!=null) html+=`<span>P: <span style="color:var(--text)">${ev.previous}${ev.unit||''}</span></span>`;
+    if(ev.actual!=null)   html+=`<span>A: <span style="color:var(--text)">${ev.actual}</span></span>`;
+    if(ev.forecast!=null) html+=`<span>F: <span style="color:var(--text)">${ev.forecast}</span></span>`;
+    if(ev.previous!=null) html+=`<span>P: <span style="color:var(--text)">${ev.previous}</span></span>`;
     html+=`</div>`;
   }
   const tip=document.createElement('div');
@@ -4640,7 +4674,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-si
 .mini-cal .cal-day.sel-start.sel-end{border-radius:50%!important}
 .mini-cal .cal-day.no-data{opacity:.35}
 .cal-cell.win-day{background:rgba(34,201,138,0.07)}.cal-cell.loss-day{background:rgba(240,92,92,0.07)}
-.news-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px}.news-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block}.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
+.news-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto;padding-top:4px;opacity:0;transition:opacity .2s}.cal-cell:hover .news-dots{opacity:1}.news-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block;transition:transform .1s}.news-dot:hover{transform:scale(1.4)}.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
 .week-summary{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .week-summary-header{padding:9px 14px;border-bottom:0.5px solid var(--border2);font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .week-row{padding:9px 14px;border-bottom:0.5px solid var(--border);display:flex;flex-direction:column;gap:2px;flex:1}
@@ -5072,7 +5106,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-si
 .mini-cal .cal-day.sel-start.sel-end{border-radius:50%!important}
 .mini-cal .cal-day.no-data{opacity:.35}
 .cal-cell.win-day{background:rgba(34,201,138,0.07)}.cal-cell.loss-day{background:rgba(240,92,92,0.07)}
-.news-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px}.news-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block}.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
+.news-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto;padding-top:4px;opacity:0;transition:opacity .2s}.cal-cell:hover .news-dots{opacity:1}.news-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block;transition:transform .1s}.news-dot:hover{transform:scale(1.4)}.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
 .week-summary{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .week-summary-header{padding:9px 14px;border-bottom:0.5px solid var(--border2);font-family:var(--font-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .week-row{padding:9px 14px;border-bottom:0.5px solid var(--border);display:flex;flex-direction:column;gap:2px;flex:1}
@@ -5504,7 +5538,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-si
 .mini-cal .cal-day.sel-start.sel-end{border-radius:50%!important}
 .mini-cal .cal-day.no-data{opacity:.35}
 .cal-cell.win-day{background:rgba(34,201,138,0.07)}.cal-cell.loss-day{background:rgba(240,92,92,0.07)}
-.news-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px}.news-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block}.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
+.news-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto;padding-top:4px;opacity:0;transition:opacity .2s}.cal-cell:hover .news-dots{opacity:1}.news-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block;transition:transform .1s}.news-dot:hover{transform:scale(1.4)}.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
 .week-summary{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .week-summary-header{padding:9px 14px;border-bottom:0.5px solid var(--border2);font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .week-row{padding:9px 14px;border-bottom:0.5px solid var(--border);display:flex;flex-direction:column;gap:2px;flex:1}
@@ -5936,7 +5970,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-si
 .mini-cal .cal-day.sel-start.sel-end{border-radius:50%!important}
 .mini-cal .cal-day.no-data{opacity:.35}
 .cal-cell.win-day{background:rgba(34,201,138,0.07)}.cal-cell.loss-day{background:rgba(240,92,92,0.07)}
-.news-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px}.news-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block}.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
+.news-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto;padding-top:4px;opacity:0;transition:opacity .2s}.cal-cell:hover .news-dots{opacity:1}.news-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;cursor:pointer;display:inline-block;transition:transform .1s}.news-dot:hover{transform:scale(1.4)}.news-dot.high{background:#e05252}.news-dot.medium{background:#f0a05c}.news-dot.low{background:var(--muted)}.news-tooltip{position:fixed;z-index:9999;background:var(--surface);border:0.5px solid var(--border2);border-radius:8px;padding:10px 13px;font-family:var(--font-mono);font-size:12px;min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none}
 .week-summary{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .week-summary-header{padding:9px 14px;border-bottom:0.5px solid var(--border2);font-family:var(--font-mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .week-row{padding:9px 14px;border-bottom:0.5px solid var(--border);display:flex;flex-direction:column;gap:2px;flex:1}
@@ -8440,6 +8474,9 @@ function openSettingsTab(tab){
   });
   if(tab==='templates'){
     openTmplTab('trade');
+  }
+  if(tab==='appearance'){
+    applyNewsTZSetting();
   }
 }
 
