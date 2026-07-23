@@ -2395,13 +2395,11 @@ body.ro #sync-pill{opacity:0.4}
       <div id="rf-scheduled-opts" style="display:flex;flex-direction:column;gap:10px">
         <div class="log-field">
           <label>Time <span id="rf-tz-label" style="color:var(--muted);font-weight:400"></span></label>
-          <input id="rf-time" type="time" class="log-input" value="09:25">
+          <input id="rf-time" type="time" class="log-input" value="09:25" style="background:var(--surface2);color:var(--text);border:0.5px solid var(--border2);color-scheme:dark">
         </div>
         <div class="log-field">
           <label>Days</label>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;background:var(--surface2);padding:3px 8px;border-radius:4px;border:0.5px solid var(--border2)"><input type="checkbox" class="rf-day" data-day="${d}" style="accent-color:var(--accent)" ${['Mon','Tue','Wed','Thu','Fri'].includes(d)?'checked':''}> ${d}</label>`).join('')}
-          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="rf-days-wrap"></div>
         </div>
       </div>
       <!-- Random options -->
@@ -7259,7 +7257,22 @@ function openReminderForm(id=null){
   const type = r?.type || 'scheduled';
   document.getElementById('rf-type-scheduled').checked = type === 'scheduled';
   document.getElementById('rf-type-random').checked = type === 'random';
-  // Set days
+  // Build day checkboxes
+  const daysWrap = document.getElementById('rf-days-wrap');
+  if(daysWrap && !daysWrap.children.length){
+    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d=>{
+      const lbl = document.createElement('label');
+      lbl.style.cssText='display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;background:var(--surface2);padding:3px 8px;border-radius:4px;border:0.5px solid var(--border2)';
+      const cb = document.createElement('input');
+      cb.type='checkbox'; cb.className='rf-day'; cb.dataset.day=d;
+      cb.style.accentColor='var(--accent)';
+      cb.checked = ['Mon','Tue','Wed','Thu','Fri'].includes(d);
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(' '+d));
+      daysWrap.appendChild(lbl);
+    });
+  }
+  // Set saved days
   document.querySelectorAll('.rf-day').forEach(cb=>{
     cb.checked = r?.days ? r.days.includes(cb.dataset.day) : ['Mon','Tue','Wed','Thu','Fri'].includes(cb.dataset.day);
   });
