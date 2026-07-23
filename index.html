@@ -10659,41 +10659,41 @@ async function blobDelete(key){
 async function pushScreenshotsForTrade(tradeId, screenshots){
   if(!isHosted()||location.hostname==='localhost') return;
   if(!screenshots||!screenshots.length) return;
-  try{ await blobPut(`tradelog-ss-trade-${tradeId}`, { screenshots }); }
+  try{ await blobPut(`screenshots/trades/${tradeId}`, { screenshots }); }
   catch(e){ console.warn('SS push failed:', e.message); }
 }
 
 async function pullScreenshotsForTrade(tradeId){
   if(!isHosted()||location.hostname==='localhost') return null;
   try{
-    const data = await blobGet(`tradelog-ss-trade-${tradeId}`);
+    const data = await blobGet(`screenshots/trades/${tradeId}`);
     return data?.screenshots || null;
   }catch(e){ return null; }
 }
 
 async function deleteScreenshotsForTrade(tradeId){
   if(!isHosted()||location.hostname==='localhost') return;
-  try{ await blobDelete(`tradelog-ss-trade-${tradeId}`); }catch(e){}
+  try{ await blobDelete(`screenshots/trades/${tradeId}`); }catch(e){}
 }
 
 async function pushScreenshotsForEod(eodId, screenshots){
   if(!isHosted()||location.hostname==='localhost') return;
   if(!screenshots||!screenshots.length) return;
-  try{ await blobPut(`tradelog-ss-eod-${eodId}`, { screenshots }); }
+  try{ await blobPut(`screenshots/eod/${eodId}`, { screenshots }); }
   catch(e){ console.warn('EOD SS push failed:', e.message); }
 }
 
 async function pullScreenshotsForEod(eodId){
   if(!isHosted()||location.hostname==='localhost') return null;
   try{
-    const data = await blobGet(`tradelog-ss-eod-${eodId}`);
+    const data = await blobGet(`screenshots/eod/${eodId}`);
     return data?.screenshots || null;
   }catch(e){ return null; }
 }
 
 async function deleteScreenshotsForEod(eodId){
   if(!isHosted()||location.hostname==='localhost') return;
-  try{ await blobDelete(`tradelog-ss-eod-${eodId}`); }catch(e){}
+  try{ await blobDelete(`screenshots/eod/${eodId}`); }catch(e){}
 }
 
 // ── Blob structure (all separate, no size issues):
@@ -10761,19 +10761,19 @@ function applyAfterPull(){
 async function pushScreenshotsForPlay(playId, screenshots){
   if(!isHosted()||location.hostname==='localhost') return;
   if(!screenshots||!screenshots.length) return;
-  try{ await blobPut(`tradelog-ss-play-${playId}`, { screenshots }); }
+  try{ await blobPut(`screenshots/playbook/${playId}`, { screenshots }); }
   catch(e){ console.warn('Play SS push failed:', e.message); }
 }
 async function pullScreenshotsForPlay(playId){
   if(!isHosted()||location.hostname==='localhost') return null;
   try{
-    const data = await blobGet(`tradelog-ss-play-${playId}`);
+    const data = await blobGet(`screenshots/playbook/${playId}`);
     return data?.screenshots||null;
   }catch(e){ return null; }
 }
 async function deleteScreenshotsForPlay(playId){
   if(!isHosted()||location.hostname==='localhost') return;
-  try{ await blobDelete(`tradelog-ss-play-${playId}`); }catch(e){}
+  try{ await blobDelete(`screenshots/playbook/${playId}`); }catch(e){}
 }
 
 // ── CSV sync ──────────────────────────────────────────────────────────────────
@@ -10783,7 +10783,7 @@ async function pushCsvForTrade(tradeId){
   const entry = cache[tradeId];
   if(!entry) return;
   try{
-    await blobPut(`tradelog-csv-${tradeId}`, entry);
+    await blobPut(`csv/${tradeId}`, entry);
   }catch(e){ console.warn('CSV push failed:', e.message); }
 }
 
@@ -10793,7 +10793,7 @@ async function pullCsvForTrade(tradeId){
   const cache = loadCsvCache();
   if(cache[tradeId]) return;
   try{
-    const data = await blobGet(`tradelog-csv-${tradeId}`);
+    const data = await blobGet(`csv/${tradeId}`);
     if(data){
       cache[tradeId] = data;
       saveCsvCache(cache);
@@ -10804,7 +10804,7 @@ async function pullCsvForTrade(tradeId){
 // Delete CSV blob when a trade is deleted
 async function deleteCsvForTrade(tradeId){
   if(!isHosted()||location.hostname==='localhost') return;
-  try{ await blobDelete(`tradelog-csv-${tradeId}`); }catch(e){}
+  try{ await blobDelete(`csv/${tradeId}`); }catch(e){}
   // Also remove from local cache
   const cache = loadCsvCache();
   if(cache[tradeId]){ delete cache[tradeId]; saveCsvCache(cache); }
@@ -10831,11 +10831,11 @@ async function pushToCloud(silent=false){
 
     await Promise.all([
       blobPut('tradelog-settings',  buildMetaBundle()),           // settings + accounts + theme
-      blobPut('tradelog-trades',    { trades: stripScreenshots(trades_raw) }),
-      blobPut('tradelog-eods',      { eods:   stripScreenshots(eods_raw),
+      blobPut('core/trades',    { trades: stripScreenshots(trades_raw) }),
+      blobPut('core/eods',      { eods:   stripScreenshots(eods_raw),
                                       eodNotes: JSON.parse(localStorage.getItem('tradelog_eod_day_notes_v1')||'{}') }),
-      blobPut('tradelog-playbook',  { plays:  stripScreenshots(pb_raw) }),
-      blobPut('tradelog-templates', JSON.parse(localStorage.getItem(TMPL_KEY)||'{}')),
+      blobPut('core/playbook',  { plays:  stripScreenshots(pb_raw) }),
+      blobPut('core/templates', JSON.parse(localStorage.getItem(TMPL_KEY)||'{}')),
     ]);
 
     // Push playbook screenshots separately (one blob per play)
@@ -10859,11 +10859,11 @@ async function pullFromCloud(){
   try{
     // Pull all blobs in parallel
     const [settings, tradesBlob, eodsBlob, pbBlob, tmplBlob] = await Promise.all([
-      blobGet('tradelog-settings'),
-      blobGet('tradelog-trades'),
-      blobGet('tradelog-eods'),
-      blobGet('tradelog-playbook'),
-      blobGet('tradelog-templates'),
+      blobGet('core/settings'),
+      blobGet('core/trades'),
+      blobGet('core/eods'),
+      blobGet('core/playbook'),
+      blobGet('core/templates'),
     ]);
 
     // Fallback: try old tradelog-meta for backwards compat
@@ -11275,7 +11275,7 @@ async function submitAuthPassword(){
   const pw = document.getElementById('auth-pw-input').value.trim();
   if(!pw) return;
   try {
-    const resp = await fetch('/api/sync?key=tradelog-auth-probe', {
+    const resp = await fetch('/api/sync?key=core/auth-probe', {
       method: 'PUT',
       headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${pw}` },
       body: JSON.stringify({ _probe: true }),
