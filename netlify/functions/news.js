@@ -1,4 +1,3 @@
-// Netlify function: /api/news?from=YYYY-MM-DD&to=YYYY-MM-DD
 import { getStore } from '@netlify/blobs';
 
 const FF_FEEDS = [
@@ -25,8 +24,12 @@ function parseXML(xml) {
 
     if (!date || impact === 'Holiday') continue;
 
-    const [mm, dd, yyyy] = date.split('-');
-    const isoDate = `${yyyy}-${mm}-${dd}`;
+    // FF format: MM-DD-YYYY
+    const parts = date.split('-');
+    let isoDate = date;
+    if (parts.length === 3 && parts[2].length === 4) {
+      isoDate = `${parts[2]}-${parts[0]}-${parts[1]}`;
+    }
 
     let isoTime = '';
     const tm = time.match(/(\d+):(\d+)(am|pm)/i);
@@ -61,6 +64,7 @@ export default async (request, context) => {
   const url = new URL(request.url);
   const from = url.searchParams.get('from');
   const to   = url.searchParams.get('to');
+  const debug = url.searchParams.get('debug') === '1';
 
   if (!from || !to) {
     return new Response(JSON.stringify({ error: 'Missing from/to' }), { status: 400, headers });
@@ -71,26 +75,45 @@ export default async (request, context) => {
   try {
     const store = getStore('tradelog');
 
-    // 1. Check Blobs cache
-    try {
-      const cached = await store.get(monthKey, { type: 'json' });
-      if (cached && Array.isArray(cached)) {
-        return new Response(JSON.stringify(cached), { status: 200, headers });
-      }
-    } catch(_) {}
+    // 1. Check Blobs cache (skip if debug)
+    if (!debug) {
+      try {
+        const cached = await store.get(monthKey, { type: 'json' });
+        if (cached && Array.isArray(cached)) {
+          return new Response(JSON.stringify(cached), { status: 200, headers });
+        }
+      } catch(_) {}
+    }
 
     // 2. Fetch both FF feeds
     const allEvents = [];
+    const debugInfo = [];
+
     for (const feedUrl of FF_FEEDS) {
       try {
         const res = await fetch(feedUrl, {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; tradelog/1.0)' }
         });
-        if (res.ok) {
-          const xml = await res.text();
-          allEvents.push(...parseXML(xml));
+        const xml = await res.text();
+        const parsed = parseXML(xml);
+        if (debug) {
+          debugInfo.push({
+            feed: feedUrl,
+            status: res.status,
+            itemCount: (xml.match(/<item>/g) || []).length,
+            parsedCount: parsed.length,
+            sample: parsed.slice(0, 3),
+            rawSample: xml.slice(0, 500),
+          });
         }
-      } catch(_) {}
+        allEvents.push(...parsed);
+      } catch(e) {
+        if (debug) debugInfo.push({ feed: feedUrl, error: e.message });
+      }
+    }
+
+    if (debug) {
+      return new Response(JSON.stringify({ debugInfo, allEvents: allEvents.slice(0, 10) }, null, 2), { status: 200, headers });
     }
 
     // Deduplicate
@@ -101,11 +124,9 @@ export default async (request, context) => {
       seen.add(k); return true;
     });
 
-    // Filter to requested month
     const monthStr = from.slice(0, 7);
     const monthEvents = unique.filter(e => e.date.startsWith(monthStr));
 
-    // 3. Cache in Blobs
     if (monthEvents.length > 0) {
       try { await store.setJSON(monthKey, monthEvents); } catch(_) {}
     }

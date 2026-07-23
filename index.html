@@ -1646,6 +1646,12 @@ body.ro #sync-pill{opacity:0.4}
         </div>
       </div>
 
+      <!-- Setup / Model -->
+      <div id="eod-prev-setups-wrap" style="display:none">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Setup / Model</div>
+        <div id="eod-prev-setups" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
       <!-- Tags -->
       <div id="eod-prev-tags-wrap" style="display:none">
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Tags</div>
@@ -1776,6 +1782,12 @@ body.ro #sync-pill{opacity:0.4}
         </div>
       </div>
 
+      <!-- Setup / Model tags -->
+      <div class="log-field">
+        <label>Setup / Model</label>
+        <div id="eod-f-setups" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:6px;min-height:38px"></div>
+      </div>
+
       <!-- Tags -->
       <div class="log-field">
         <label>Tags</label>
@@ -1838,6 +1850,7 @@ body.ro #sync-pill{opacity:0.4}
       <button class="stab"        id="stab-tags"       onclick="openSettingsTab('tags')"       style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Tags</button>
       <button class="stab"        id="stab-templates"  onclick="openSettingsTab('templates')"  style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Templates</button>
       <button class="stab"        id="stab-data"       onclick="openSettingsTab('data')"       style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Data</button>
+      <button class="stab"        id="stab-migration"  onclick="openSettingsTab('migration')"  style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Migration</button>
     </div>
 
     <div class="settings-body">
@@ -2094,6 +2107,28 @@ body.ro #sync-pill{opacity:0.4}
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Storage Migration -->
+      <div class="settings-tab-panel" data-tab="migration" style="display:none;padding:20px">
+        <div style="font-family:var(--font-mono);font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+          Reorganises Netlify Blobs from a flat structure into folders:<br>
+          <code style="font-size:11px;color:var(--accent)">tradelog-ss-eod-{id}</code> →
+          <code style="font-size:11px;color:var(--green)">screenshots/eod/{id}</code><br>
+          <code style="font-size:11px;color:var(--accent)">tradelog-csv-{id}</code> →
+          <code style="font-size:11px;color:var(--green)">csv/{id}</code><br>
+          <code style="font-size:11px;color:var(--accent)">tradelog-trades</code> →
+          <code style="font-size:11px;color:var(--green)">core/trades</code> … etc.
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <button data-write class="btn primary sm" onclick="runMigration('migrate-copy')" id="migrate-copy-btn" style="min-width:160px">
+            ⎘ Step 1 — Copy to new structure
+          </button>
+          <button data-write class="btn danger sm" onclick="runMigration('migrate-delete')" id="migrate-delete-btn" style="min-width:160px;display:none">
+            ✕ Step 2 — Delete old keys
+          </button>
+        </div>
+        <div id="migrate-log" style="font-family:var(--font-mono);font-size:12px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:8px;padding:12px;max-height:320px;overflow-y:auto;display:none;line-height:1.8"></div>
       </div>
 
     </div>
@@ -6994,6 +7029,60 @@ function exportCSV(){
 // ── Storage helpers ───────────────────────────────────────────────────────────
 function updateLastImport(){}
 function updateStoragePill(){} // no-op: storage pill removed; Blobs is source of truth
+async function runMigration(action){
+  if(!isOwner()){toast('Read-only — log in to run migration.',true);return;}
+  const logEl = document.getElementById('migrate-log');
+  const copyBtn = document.getElementById('migrate-copy-btn');
+  const delBtn  = document.getElementById('migrate-delete-btn');
+  if(!logEl) return;
+
+  logEl.style.display = 'block';
+  logEl.innerHTML = `<span style="color:var(--muted)">Starting ${action}…</span><br>`;
+  if(copyBtn) copyBtn.disabled = true;
+  if(delBtn)  delBtn.disabled  = true;
+
+  try {
+    const res = await fetch(`/api/sync?action=${action}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${getWriteToken()}` },
+    });
+    const data = await res.json();
+
+    if(data.error){ logEl.innerHTML += `<span style="color:var(--red)">Error: ${data.error}</span>`; return; }
+
+    let copied=0, deleted=0, skipped=0, errors=0;
+    for(const r of (data.results||[])){
+      let color='var(--muted)', symbol='○';
+      if(r.status==='copied')  { color='var(--green)'; symbol='✓'; copied++; }
+      if(r.status==='deleted') { color='var(--green)'; symbol='✓'; deleted++; }
+      if(r.status==='error')   { color='var(--red)';   symbol='✕'; errors++; }
+      if(r.status==='skipped'||r.status==='missing'||r.status==='skipped-missing-new') { skipped++; }
+      if(r.status!=='skipped') {
+        logEl.innerHTML += `<span style="color:${color}">${symbol} ${r.old||''} → ${r.nk||r.status}${r.msg?' ('+r.msg+')':''}</span><br>`;
+      }
+    }
+
+    const summary = action==='migrate-copy'
+      ? `<br><strong style="color:var(--green)">✓ Copy complete — ${copied} files copied, ${skipped} skipped, ${errors} errors.</strong>`
+      : `<br><strong style="color:var(--green)">✓ Delete complete — ${deleted} old keys removed, ${skipped} skipped, ${errors} errors.</strong>`;
+    logEl.innerHTML += summary;
+    logEl.scrollTop = logEl.scrollHeight;
+
+    // Show delete button after successful copy
+    if(action==='migrate-copy' && copied>0 && errors===0){
+      if(delBtn){ delBtn.style.display='inline-flex'; delBtn.disabled=false; }
+      toast('Copy done — verify in Netlify dashboard, then press Delete old keys.');
+    }
+    if(action==='migrate-delete'){
+      toast('Migration complete. Old keys deleted.');
+    }
+  } catch(err){
+    logEl.innerHTML += `<span style="color:var(--red)">Network error: ${err.message}</span>`;
+  } finally {
+    if(copyBtn) copyBtn.disabled = false;
+  }
+}
+
 function openClearModal(){closeModals();document.getElementById('clear-modal').classList.add('open');}
 function closeModals(){document.querySelectorAll('.modal-bg').forEach(m=>m.classList.remove('open'));}
 function clearAll(){if(!isOwner()){toast('Read-only — log in first.',true);return;}trades=[];saveTrades(trades);closeModals();render();renderJournalList();toast('All trades cleared.');}
@@ -7653,6 +7742,15 @@ async function openEodPreview(id){
   // Tags
   const tagsWrap = document.getElementById('eod-prev-tags-wrap');
   const tagsEl = document.getElementById('eod-prev-tags');
+  // Setups
+  const setupsWrap = document.getElementById('eod-prev-setups-wrap');
+  const setupsEl   = document.getElementById('eod-prev-setups');
+  const hasSetups  = (e.setups||[]).length > 0;
+  if(setupsWrap) setupsWrap.style.display = hasSetups ? 'block' : 'none';
+  if(setupsEl) setupsEl.innerHTML = hasSetups
+    ? (e.setups).map(t=>`<span style="font-family:var(--font-mono);font-size:12px;padding:2px 8px;border-radius:4px;background:rgba(99,179,237,0.15);color:#63b3ed">${t}</span>`).join('')
+    : '';
+
   const hasTags = (e.tags||[]).length > 0;
   if(tagsWrap) tagsWrap.style.display = hasTags ? 'block' : 'none';
   tagsEl.innerHTML = hasTags
@@ -7825,7 +7923,7 @@ function openEodForm(id, dateStr){
   const eodTags = s.eodTags || DEFAULT_EOD_TAGS;
 
   // Pre-fill form
-  let sym = '', date = dateStr || new Date().toISOString().slice(0,10), selTags = [];
+  let sym = '', date = dateStr || new Date().toISOString().slice(0,10), selTags = [], selSetups = [];
   let sessionAsia='', sessionLondon='', sessionNY='', sessionNYPM='';
   if(id){
     const e = eods.find(x=>x.id===id);
@@ -7833,6 +7931,7 @@ function openEodForm(id, dateStr){
       sym = e.symbol||'';
       date = e.date||date;
       selTags = e.tags||[];
+      selSetups = e.setups||[];
       _eodTabText.notes    = e.notes||'';
       _eodTabText.mistakes = e.mistakes||'';
       _eodTabText.lessons  = e.lessons||'';
@@ -7922,6 +8021,16 @@ function openEodForm(id, dateStr){
 
   // Populate session dropdowns
   populateEodSessionDropdowns(sessionAsia, sessionLondon, sessionNY, sessionNYPM, id ? {} : {});
+
+  // Render setup/model chips
+  const setupContainer = document.getElementById('eod-f-setups');
+  if(setupContainer){
+    const setups = s.setups || DEFAULT_SETUPS;
+    setupContainer.innerHTML = setups.map(t=>`
+      <span class="tag-chip${selSetups.includes(t)?' selected':''}" data-tag="${t}"
+        onclick="this.classList.toggle('selected')"
+        style="cursor:pointer">${t}</span>`).join('');
+  }
 
   // Render tag chips
   const tagContainer = document.getElementById('eod-f-tags');
@@ -8034,7 +8143,8 @@ function submitEodForm(){
       if(sessNYPM   && e.sessionNYPM   && sessNYPM   !== e.sessionNYPM)   { toast(`NY PM session conflicts with existing EOD (${e.sessionNYPM}). Edit the existing EOD instead.`, true); return; }
     }
   }
-  const selTags = [...document.querySelectorAll('#eod-f-tags .tag-chip.selected')].map(c=>c.dataset.tag);
+  const selTags   = [...document.querySelectorAll('#eod-f-tags .tag-chip.selected')].map(c=>c.dataset.tag);
+  const selSetups = [...document.querySelectorAll('#eod-f-setups .tag-chip.selected')].map(c=>c.dataset.tag);
   const sessionAsia   = document.getElementById('eod-f-session-asia')?.value   || '';
   const sessionLondon = document.getElementById('eod-f-session-london')?.value || '';
   const sessionNY     = document.getElementById('eod-f-session-ny')?.value     || '';
@@ -8056,7 +8166,7 @@ function submitEodForm(){
   if(_eodEditingId){
     const e = eods.find(x=>x.id===_eodEditingId);
     if(e){
-      Object.assign(e,{ symbol:sym, date, tags:selTags,
+      Object.assign(e,{ symbol:sym, date, tags:selTags, setups:selSetups,
         notes:_eodTabText.notes, mistakes:_eodTabText.mistakes, lessons:_eodTabText.lessons,
         sessionAsia, sessionLondon, sessionNY, sessionNYPM, sessionFocus,
         nrAsia, nrLondon, nrNY, nrNYPM,
@@ -8084,7 +8194,7 @@ function submitEodForm(){
   } else {
     const newId = uid();
     savedEodId = newId;
-    eods.push({ id:newId, symbol:sym, date, tags:selTags,
+    eods.push({ id:newId, symbol:sym, date, tags:selTags, setups:selSetups,
       notes:_eodTabText.notes, mistakes:_eodTabText.mistakes, lessons:_eodTabText.lessons,
       sessionAsia, sessionLondon, sessionNY, sessionNYPM, sessionFocus,
       nrAsia, nrLondon, nrNY, nrNYPM,
