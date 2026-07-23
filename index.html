@@ -8542,27 +8542,35 @@ function submitEodForm(){
       if(rangeNYPM   != null) sibling.rangeNYPM    = rangeNYPM;
     });
   }
+  const _wasEdit = !!_eodEditingId;
   // Push screenshots to their own blob
   if(screenshots.length) pushScreenshotsForEod(savedEodId, screenshots);
-  else if(_eodEditingId) deleteScreenshotsForEod(savedEodId); // all removed during edit
+  else if(_eodEditingId) deleteScreenshotsForEod(savedEodId);
   // Restore screenshots in memory for current session (so tab still shows them)
   const eodInMem = eods.find(x=>x.id===savedEodId);
   if(eodInMem) eodInMem.screenshots = screenshots;
-  saveEods(eods);
+  try {
+    saveEods(eods);
+  } catch(err) {
+    console.error('saveEods failed:', err);
+    toast('Save error — please try again.',true);
+  }
   _eodFormScreenshots = [];
   closeEodForm();
-  renderEodCalendar();
-  renderEodYearView();
-  // Refresh the popup list if it's still open on the same date
-  if(_eodPopupDate){
-    renderEodPopupList(_eodPopupDate);
-    const dayEods = eods.filter(e=>e.date===_eodPopupDate);
-    document.getElementById('eod-popup-count-label').textContent =
-      dayEods.length ? `${dayEods.length} EOD${dayEods.length>1?'s':''} logged` : 'No EODs yet for this day';
+  try {
+    renderEodCalendar();
+    renderEodYearView();
+    if(_eodPopupDate){
+      renderEodPopupList(_eodPopupDate);
+      const dayEods = eods.filter(e=>e.date===_eodPopupDate);
+      document.getElementById('eod-popup-count-label').textContent =
+        dayEods.length ? `${dayEods.length} EOD${dayEods.length>1?'s':''} logged` : 'No EODs yet for this day';
+    }
+    setTimeout(()=>openEodPreview(savedEodId), 100);
+  } catch(err) {
+    console.error('EOD render error:', err);
   }
-  // Refresh preview panel with updated data
-  openEodPreview(savedEodId);
-  toast(_eodEditingId ? 'EOD updated.' : 'EOD saved.');
+  toast(_wasEdit ? 'EOD updated.' : 'EOD saved.');
 }
 
 function deleteEod(){
@@ -10975,15 +10983,22 @@ async function blobGet(key){
   return await resp.json();
 }
 
-async function blobPut(key, data){
+async function blobPut(key, data, timeoutMs=8000){
   if(!isOwner()){ throw new Error('Read-only: please log in to save changes.'); }
-  const resp = await fetch(`/api/sync?key=${encodeURIComponent(key)}`, {
-    method: 'PUT',
-    headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${getWriteToken()}` },
-    body: JSON.stringify(data),
-  });
-  if(resp.status===401) throw new Error('Session expired — please log in again.');
-  if(!resp.ok) throw new Error(`PUT ${key} failed (${resp.status})`);
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), timeoutMs);
+  try{
+    const resp = await fetch(`/api/sync?key=${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${getWriteToken()}` },
+      body: JSON.stringify(data),
+      signal: controller.signal,
+    });
+    if(resp.status===401) throw new Error('Session expired — please log in again.');
+    if(!resp.ok) throw new Error(`PUT ${key} failed (${resp.status})`);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function blobDelete(key){
@@ -11001,8 +11016,8 @@ async function blobDelete(key){
 async function pushScreenshotsForTrade(tradeId, screenshots){
   if(!isHosted()||location.hostname==='localhost') return;
   if(!screenshots||!screenshots.length) return;
-  try{ await blobPut(`screenshots/trades/${tradeId}`, { screenshots }); }
-  catch(e){ console.warn('SS push failed:', e.message); }
+  try{ await blobPut(`screenshots/trades/${tradeId}`, { screenshots }, 20000); }
+  catch(e){ console.warn('SS push failed:', e.message); toast('Screenshot upload failed — try saving again.',true); }
 }
 
 async function pullScreenshotsForTrade(tradeId){
@@ -11021,8 +11036,8 @@ async function deleteScreenshotsForTrade(tradeId){
 async function pushScreenshotsForEod(eodId, screenshots){
   if(!isHosted()||location.hostname==='localhost') return;
   if(!screenshots||!screenshots.length) return;
-  try{ await blobPut(`screenshots/eod/${eodId}`, { screenshots }); }
-  catch(e){ console.warn('EOD SS push failed:', e.message); }
+  try{ await blobPut(`screenshots/eod/${eodId}`, { screenshots }, 20000); }
+  catch(e){ console.warn('EOD SS push failed:', e.message); toast('Screenshot upload failed — try saving again.',true); }
 }
 
 async function pullScreenshotsForEod(eodId){
@@ -11103,8 +11118,8 @@ function applyAfterPull(){
 async function pushScreenshotsForPlay(playId, screenshots){
   if(!isHosted()||location.hostname==='localhost') return;
   if(!screenshots||!screenshots.length) return;
-  try{ await blobPut(`screenshots/playbook/${playId}`, { screenshots }); }
-  catch(e){ console.warn('Play SS push failed:', e.message); }
+  try{ await blobPut(`screenshots/playbook/${playId}`, { screenshots }, 20000); }
+  catch(e){ console.warn('Play SS push failed:', e.message); toast('Screenshot upload failed — try saving again.',true); }
 }
 async function pullScreenshotsForPlay(playId){
   if(!isHosted()||location.hostname==='localhost') return null;
