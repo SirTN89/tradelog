@@ -668,6 +668,13 @@ body.ro #sync-pill{opacity:0.4}
             <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:6px">COUNTRIES</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px" id="cal-news-countries"></div>
           </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:6px">TIMEZONE</div>
+            <select id="cal-news-tz" onchange="setNewsTZ(this.value)" style="font-family:var(--font-mono);font-size:13px;padding:4px 8px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:6px;color:var(--text);cursor:pointer">
+              <option value="America/New_York">New York (ET)</option>
+              <option value="America/Chicago">Chicago (CT)</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="cal-dow"><div class="cal-dow-cell">Sun</div><div class="cal-dow-cell">Mon</div><div class="cal-dow-cell">Tue</div><div class="cal-dow-cell">Wed</div><div class="cal-dow-cell">Thu</div><div class="cal-dow-cell">Fri</div><div class="cal-dow-cell">Sat</div></div>
@@ -1996,14 +2003,6 @@ body.ro #sync-pill{opacity:0.4}
             </div>
           </div>
 
-          <div style="margin-bottom:14px">
-            <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">News event timezone</div>
-            <select id="s-news-tz" class="log-input" onchange="setNewsTZ(this.value)" style="max-width:320px">
-              <option value="America/New_York">New York (ET)</option>
-              <option value="America/Chicago">Chicago (CT)</option>
-            </select>
-          </div>
-
         </div>
       </div>
 
@@ -3004,6 +3003,7 @@ function applyCalNewsSettings(){
   if(wrap) wrap.querySelectorAll('input[type=checkbox]').forEach(cb=>{
     cb.checked = !s.countries || s.countries.length===0 || s.countries.includes(cb.dataset.country);
   });
+  applyNewsTZSetting();
 }
 function toggleCalNewsPanel(){
   const panel = document.getElementById('cal-news-panel');
@@ -3052,12 +3052,11 @@ const NEWS_TZ_KEY = 'tradelog_news_tz';
 function getNewsTZ(){ return localStorage.getItem(NEWS_TZ_KEY) || 'America/New_York'; }
 function setNewsTZ(tz){
   localStorage.setItem(NEWS_TZ_KEY, tz);
-  // Update select in settings if open
-  const sel = document.getElementById('s-news-tz');
+  const sel = document.getElementById('cal-news-tz');
   if(sel) sel.value = tz;
 }
 function applyNewsTZSetting(){
-  const sel = document.getElementById('s-news-tz');
+  const sel = document.getElementById('cal-news-tz');
   if(sel) sel.value = getNewsTZ();
 }
 function formatNewsTime(isoDate, isoTime){
@@ -8474,9 +8473,6 @@ function openSettingsTab(tab){
   });
   if(tab==='templates'){
     openTmplTab('trade');
-  }
-  if(tab==='appearance'){
-    applyNewsTZSetting();
   }
 }
 
