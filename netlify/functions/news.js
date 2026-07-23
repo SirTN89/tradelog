@@ -4,6 +4,11 @@ const FF_FEEDS = [
   'https://nfs.faireconomy.media/ff_calendar_thisweek.xml',
 ];
 
+const CURRENCY_TO_COUNTRY = {
+  'USD': 'US', 'EUR': 'EU', 'GBP': 'GB', 'JPY': 'JP',
+  'CAD': 'CA', 'AUD': 'AU', 'CHF': 'CH', 'CNY': 'CN', 'NZD': 'NZ',
+};
+
 function parseXML(xml) {
   const events = [];
   const items = xml.match(/<event>([\s\S]*?)<\/event>/g) || [];
@@ -41,9 +46,11 @@ function parseXML(xml) {
       isoTime = `${String(h).padStart(2,'0')}:${min}`;
     }
 
+    const rawCountry = country.toUpperCase();
     events.push({
       date: isoDate, time: isoTime, event: title,
-      country: country.toUpperCase(), impact: impact.toLowerCase(),
+      country: CURRENCY_TO_COUNTRY[rawCountry] || rawCountry,
+      impact: impact.toLowerCase(),
       actual: actual || null, forecast: forecast || null, previous: previous || null,
     });
   }
