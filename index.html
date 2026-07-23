@@ -2430,7 +2430,7 @@ body.ro #sync-pill{opacity:0.4}
   <div id="reminder-popup-message" style="font-size:18px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:20px"></div>
   <button onclick="closeReminderPopup()" class="btn primary" style="min-width:100px">Got it</button>
 </div>
-<div id="reminder-popup-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8999" onclick="closeReminderPopup()"></div>
+<div id="reminder-popup-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8999"></div>
 
 <!-- Clear modal -->
 <div class="modal-bg" id="clear-modal">
@@ -3688,7 +3688,7 @@ function openSettings(){
   openSettingsTab('cloud');
   document.getElementById('settings-modal-bg').classList.add('open');
 }
-function closeSettings(){document.getElementById('settings-modal-bg').classList.remove('open');}
+function closeSettings(){document.getElementById('settings-modal-bg').classList.remove('open');checkPendingReminder();}
 
 // ── Lightweight Charts ────────────────────────────────────────────────────────
 let lwChart=null, lwCandleSeries=null, lwMarkers=[], lwConnectorSeries=null;
@@ -7325,8 +7325,7 @@ function isAnyFormOpen(){
   return !!(
     document.getElementById('eod-form-bg')?.style.display==='flex' ||
     document.getElementById('pb-form-bg')?.classList.contains('open') ||
-    document.getElementById('log-modal-bg')?.classList.contains('open') ||
-    document.getElementById('settings-modal-bg')?.classList.contains('open')
+    document.getElementById('log-modal-bg')?.classList.contains('open')
   );
 }
 function showReminderPopup(r){
@@ -7355,8 +7354,13 @@ function checkPendingReminder(){
 // ── Scheduler ─────────────────────────────────────────────────────────────────
 function startReminderScheduler(){
   if(_reminderTimer) clearInterval(_reminderTimer);
-  _reminderTimer = setInterval(tickReminders, 60000); // every minute
-  tickReminders(); // run once on start
+  // Fire immediately, then align to top of next minute
+  tickReminders();
+  const msToNextMinute = 60000 - (Date.now() % 60000);
+  setTimeout(()=>{
+    tickReminders();
+    _reminderTimer = setInterval(tickReminders, 60000);
+  }, msToNextMinute);
 }
 function tickReminders(){
   if(!isOwner() || !_reminders.length) return;
@@ -7372,16 +7376,14 @@ function tickReminders(){
 
     if(r.type === 'scheduled'){
       if(r.time === hhmm && (r.days||[]).includes(todayDay)){
-        // Only fire once per minute window
         const fireKey = `${r.id}-${nowInTZ.toDateString()}-${hhmm}`;
         if(_lastRandomFire[fireKey]) continue;
         _lastRandomFire[fireKey] = Date.now();
         showReminderPopup(r);
       }
     } else {
-      // Random — check if enough time has passed since last fire
       const intervalMs = ((r.interval||2) * 60 * 60 * 1000);
-      const jitter = (Math.random() - 0.5) * 60 * 60 * 1000; // ±30 min
+      const jitter = (Math.random() - 0.5) * 60 * 60 * 1000;
       const last = _lastRandomFire[r.id] || 0;
       if(Date.now() - last >= intervalMs + jitter){
         _lastRandomFire[r.id] = Date.now();
