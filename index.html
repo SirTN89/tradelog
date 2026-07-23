@@ -3056,6 +3056,7 @@ function setNewsTZ(tz){
   localStorage.setItem(NEWS_TZ_KEY, tz);
   const sel = document.getElementById('cal-news-tz');
   if(sel) sel.value = tz;
+  // No re-render needed — tooltip reads TZ at hover time
 }
 function applyNewsTZSetting(){
   const sel = document.getElementById('cal-news-tz');
@@ -3080,7 +3081,17 @@ function formatNewsTime(isoDate, isoTime){
 function showNewsTooltip(e, ds, idx){
   hideNewsTooltip();
   const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}`;
-  const events=(_newsCache[key]||[]).filter(ev=>ev.date===ds);
+  const s = loadCalNewsSettings();
+  const countries = s.countries && s.countries.length ? s.countries : null;
+  // Use same filter as getNewsDotsHtml so indices match
+  const events=(_newsCache[key]||[]).filter(ev=>{
+    if(ev.date!==ds) return false;
+    if(countries && !countries.includes(ev.country)) return false;
+    if(ev.impact==='high'   && !s.high)   return false;
+    if(ev.impact==='medium' && !s.medium) return false;
+    if(ev.impact==='low'    && !s.low)    return false;
+    return true;
+  });
   const ev=events[idx];if(!ev)return;
   const impactColor=ev.impact==='high'?'#e05252':ev.impact==='medium'?'#f0a05c':'var(--muted)';
   const {display: timeDisplay, label: tzLabel} = formatNewsTime(ev.date, ev.time);
