@@ -7538,6 +7538,7 @@ function renderEodPopupList(dateStr){
   }
   list.innerHTML = dayEods.map(e=>{
     const tags = (e.tags||[]).map(t=>`<span style="font-family:var(--font-mono);font-size:12px;padding:2px 6px;border-radius:4px;background:rgba(167,139,250,0.15);color:#a78bfa">${t}</span>`).join('');
+    const setups = (e.setups||[]).map(t=>`<span style="font-family:var(--font-mono);font-size:12px;padding:2px 6px;border-radius:4px;background:rgba(99,179,237,0.15);color:#63b3ed">${t}</span>`).join('');
     const SESS_COLS = [
       {label:'Asia',   status:e.sessionAsia||'', nr:e.nrAsia,   range:e.rangeAsia},
       {label:'London', status:e.sessionLondon||'',nr:e.nrLondon, range:e.rangeLondon},
@@ -7572,7 +7573,7 @@ function renderEodPopupList(dateStr){
       </div>` : '';
     const hasSS = (e.screenshots||[]).length > 0;
     const hasNotes = !!(e.notes||e.mistakes||e.lessons);
-    const hasExtra = !!(tags || hasSessions);
+    const hasExtra = !!(tags || setups || hasSessions);
     return `<div style="background:var(--surface2);border:0.5px solid var(--border2);border-radius:8px;padding:12px 14px;transition:border-color .15s;cursor:pointer"
       onclick="openEodPreview('${e.id}')"
       onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
@@ -7589,7 +7590,7 @@ function renderEodPopupList(dateStr){
       </div>
       ${sessGrid}
       ${e.sessionFocus ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:${tags?'8':'0'}px"><span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Session Focus</span><span style="font-family:var(--font-mono);font-size:12px;color:var(--text);background:var(--surface2);border:0.5px solid var(--border2);border-radius:4px;padding:1px 7px">${e.sessionFocus}</span></div>` : ''}
-      ${tags?`<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Tags</div><div style="display:flex;flex-wrap:wrap;gap:4px">${tags}</div>`:''}
+      ${setups?`<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Setup / Model</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:${tags?'8':'0'}px">${setups}</div>`:''}\n      ${tags?`<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Tags</div><div style="display:flex;flex-wrap:wrap;gap:4px">${tags}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -9026,6 +9027,7 @@ function openPlaybookForm(id){
   if(!isOwner()){toast('Read-only — log in to edit the playbook.',true);return;}
   _pbEditId = id;
   _pbScreenshots = [];
+  renderPbScreenshots(); // always reset UI first
   const play = id ? playbook.find(p=>p.id===id) : null;
   document.getElementById('pb-form-title').textContent = id ? 'Edit Play' : 'New Play';
   document.getElementById('pb-name').value = play?.name||'';
