@@ -2,12 +2,11 @@ import { getStore } from '@netlify/blobs';
 
 const FF_FEEDS = [
   'https://nfs.faireconomy.media/ff_calendar_thisweek.xml',
-  'https://nfs.faireconomy.media/ff_calendar_nextweek.xml',
 ];
 
 function parseXML(xml) {
   const events = [];
-  const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
+  const items = xml.match(/<event>([\s\S]*?)<\/event>/g) || [];
   for (const item of items) {
     const get = tag => {
       const m = item.match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
@@ -22,7 +21,7 @@ function parseXML(xml) {
     const forecast = get('forecast');
     const previous = get('previous');
 
-    if (!date || impact === 'Holiday') continue;
+    if (!date || impact === 'Holiday' || title === 'Bank Holiday') continue;
 
     // FF format: MM-DD-YYYY
     const parts = date.split('-');
@@ -62,8 +61,8 @@ export default async (request, context) => {
   }
 
   const url = new URL(request.url);
-  const from = url.searchParams.get('from');
-  const to   = url.searchParams.get('to');
+  const from  = url.searchParams.get('from');
+  const to    = url.searchParams.get('to');
   const debug = url.searchParams.get('debug') === '1';
 
   if (!from || !to) {
@@ -85,7 +84,7 @@ export default async (request, context) => {
       } catch(_) {}
     }
 
-    // 2. Fetch both FF feeds
+    // 2. Fetch FF feed
     const allEvents = [];
     const debugInfo = [];
 
@@ -100,7 +99,7 @@ export default async (request, context) => {
           debugInfo.push({
             feed: feedUrl,
             status: res.status,
-            itemCount: (xml.match(/<item>/g) || []).length,
+            itemCount: (xml.match(/<event>/g) || []).length,
             parsedCount: parsed.length,
             sample: parsed.slice(0, 3),
             rawSample: xml.slice(0, 500),
@@ -124,9 +123,11 @@ export default async (request, context) => {
       seen.add(k); return true;
     });
 
+    // Filter to requested month
     const monthStr = from.slice(0, 7);
     const monthEvents = unique.filter(e => e.date.startsWith(monthStr));
 
+    // 3. Cache in Blobs
     if (monthEvents.length > 0) {
       try { await store.setJSON(monthKey, monthEvents); } catch(_) {}
     }
