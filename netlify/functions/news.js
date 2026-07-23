@@ -95,12 +95,11 @@ export default async (request, context) => {
     if (!debug) {
       try {
         const cached = await store.getWithMetadata(monthKey, { type: 'json' });
-        if (cached && cached.data && Array.isArray(cached.data)) {
+        if (cached && cached.data && Array.isArray(cached.data) && cached.data.length > 0) {
           const age = Date.now() - (cached.metadata?.ts || 0);
           if (!isCurrent || age < CURRENT_WEEK_TTL_MS) {
             return new Response(JSON.stringify(cached.data), { status: 200, headers });
           }
-          // Current month cache stale — fall through to re-fetch
         }
       } catch(_) {}
     }

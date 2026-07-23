@@ -3030,9 +3030,11 @@ async function fetchCalNews(year, month){
     const res = await fetch(`/api/news?from=${from}&to=${to}`);
     if(!res.ok) return [];
     const data = await res.json();
-    _newsCache[key] = Array.isArray(data) ? data : [];
-  } catch{ _newsCache[key] = []; }
-  return _newsCache[key];
+    if(Array.isArray(data) && data.length > 0){
+      _newsCache[key] = data;
+    }
+    return _newsCache[key] || [];
+  } catch{ return []; }
 }
 function getNewsDotsHtml(ds, events, s){
   if(!s.enabled || !events || !events.length) return '';
