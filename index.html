@@ -10770,7 +10770,7 @@ async function pushToCloud(silent=false){
     const pb_raw     = JSON.parse(localStorage.getItem('tradelog_playbook_v1')||'[]');
 
     await Promise.all([
-      blobPut('tradelog-settings',  buildMetaBundle()),           // settings + accounts + theme
+      blobPut('core/settings',  buildMetaBundle()),           // settings + accounts + theme
       blobPut('core/trades',    { trades: stripScreenshots(trades_raw) }),
       blobPut('core/eods',      { eods:   stripScreenshots(eods_raw),
                                       eodNotes: JSON.parse(localStorage.getItem('tradelog_eod_day_notes_v1')||'{}') }),
