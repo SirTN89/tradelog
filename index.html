@@ -1850,7 +1850,6 @@ body.ro #sync-pill{opacity:0.4}
       <button class="stab"        id="stab-tags"       onclick="openSettingsTab('tags')"       style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Tags</button>
       <button class="stab"        id="stab-templates"  onclick="openSettingsTab('templates')"  style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Templates</button>
       <button class="stab"        id="stab-data"       onclick="openSettingsTab('data')"       style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Data</button>
-      <button class="stab"        id="stab-migration"  onclick="openSettingsTab('migration')"  style="font-family:var(--font-mono);font-size:13px;padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:-1px">Migration</button>
     </div>
 
     <div class="settings-body">
@@ -2107,28 +2106,6 @@ body.ro #sync-pill{opacity:0.4}
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Storage Migration -->
-      <div id="stab-panel-migration" class="stab-panel" style="display:none;padding:20px">
-        <div style="font-family:var(--font-mono);font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
-          Reorganises Netlify Blobs from a flat structure into folders:<br>
-          <code style="font-size:11px;color:var(--accent)">tradelog-ss-eod-{id}</code> →
-          <code style="font-size:11px;color:var(--green)">screenshots/eod/{id}</code><br>
-          <code style="font-size:11px;color:var(--accent)">tradelog-csv-{id}</code> →
-          <code style="font-size:11px;color:var(--green)">csv/{id}</code><br>
-          <code style="font-size:11px;color:var(--accent)">tradelog-trades</code> →
-          <code style="font-size:11px;color:var(--green)">core/trades</code> … etc.
-        </div>
-        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-          <button data-write class="btn primary sm" onclick="runMigration('migrate-copy')" id="migrate-copy-btn" style="min-width:160px">
-            ⎘ Step 1 — Copy to new structure
-          </button>
-          <button data-write class="btn danger sm" onclick="runMigration('migrate-delete')" id="migrate-delete-btn" style="min-width:160px;display:none">
-            ✕ Step 2 — Delete old keys
-          </button>
-        </div>
-        <div id="migrate-log" style="font-family:var(--font-mono);font-size:12px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:8px;padding:12px;max-height:320px;overflow-y:auto;display:none;line-height:1.8"></div>
       </div>
 
     </div>
@@ -6601,7 +6578,9 @@ function bulkDelete(){
     setTimeout(()=>{btn.dataset.confirming='';btn.textContent='✕ Delete';},2500);
     return;
   }
+  const deletedIds = [..._bulkSelected];
   trades=trades.filter(t=>!_bulkSelected.has(t.id));
+  deletedIds.forEach(id=>{ deleteScreenshotsForTrade(id); deleteCsvForTrade(id); });
   saveTrades(trades);render();
   const n=_bulkSelected.size;
   _bulkSelected.clear();
@@ -6885,7 +6864,7 @@ function attachScreenshot(input){
 }
 
 // ── Trade CRUD ────────────────────────────────────────────────────────────────
-function deleteTrade(id){if(!isOwner()){toast('Read-only — log in to delete trades.',true);return;}trades=trades.filter(t=>t.id!==id);saveTrades(trades);render();if(document.getElementById('page-journal').classList.contains('active'))renderJournalList();toast('Trade removed.');}
+function deleteTrade(id){if(!isOwner()){toast('Read-only — log in to delete trades.',true);return;}trades=trades.filter(t=>t.id!==id);deleteScreenshotsForTrade(id);deleteCsvForTrade(id);saveTrades(trades);render();if(document.getElementById('page-journal').classList.contains('active'))renderJournalList();toast('Trade removed.');}
 
 // ── CSV Import ────────────────────────────────────────────────────────────────
 function dzOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('drag');}
@@ -7029,59 +7008,6 @@ function exportCSV(){
 // ── Storage helpers ───────────────────────────────────────────────────────────
 function updateLastImport(){}
 function updateStoragePill(){} // no-op: storage pill removed; Blobs is source of truth
-async function runMigration(action){
-  if(!isOwner()){toast('Read-only — log in to run migration.',true);return;}
-  const logEl = document.getElementById('migrate-log');
-  const copyBtn = document.getElementById('migrate-copy-btn');
-  const delBtn  = document.getElementById('migrate-delete-btn');
-  if(!logEl) return;
-
-  logEl.style.display = 'block';
-  logEl.innerHTML = `<span style="color:var(--muted)">Starting ${action}…</span><br>`;
-  if(copyBtn) copyBtn.disabled = true;
-  if(delBtn)  delBtn.disabled  = true;
-
-  try {
-    const res = await fetch(`/api/sync?action=${action}`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${getWriteToken()}` },
-    });
-    const data = await res.json();
-
-    if(data.error){ logEl.innerHTML += `<span style="color:var(--red)">Error: ${data.error}</span>`; return; }
-
-    let copied=0, deleted=0, skipped=0, errors=0;
-    for(const r of (data.results||[])){
-      let color='var(--muted)', symbol='○';
-      if(r.status==='copied')  { color='var(--green)'; symbol='✓'; copied++; }
-      if(r.status==='deleted') { color='var(--green)'; symbol='✓'; deleted++; }
-      if(r.status==='error')   { color='var(--red)';   symbol='✕'; errors++; }
-      if(r.status==='skipped'||r.status==='missing'||r.status==='skipped-missing-new') { skipped++; }
-      if(r.status!=='skipped') {
-        logEl.innerHTML += `<span style="color:${color}">${symbol} ${r.old||''} → ${r.nk||r.status}${r.msg?' ('+r.msg+')':''}</span><br>`;
-      }
-    }
-
-    const summary = action==='migrate-copy'
-      ? `<br><strong style="color:var(--green)">✓ Copy complete — ${copied} files copied, ${skipped} skipped, ${errors} errors.</strong>`
-      : `<br><strong style="color:var(--green)">✓ Delete complete — ${deleted} old keys removed, ${skipped} skipped, ${errors} errors.</strong>`;
-    logEl.innerHTML += summary;
-    logEl.scrollTop = logEl.scrollHeight;
-
-    // Show delete button after successful copy
-    if(action==='migrate-copy' && copied>0 && errors===0){
-      if(delBtn){ delBtn.style.display='inline-flex'; delBtn.disabled=false; }
-      toast('Copy done — verify in Netlify dashboard, then press Delete old keys.');
-    }
-    if(action==='migrate-delete'){
-      toast('Migration complete. Old keys deleted.');
-    }
-  } catch(err){
-    logEl.innerHTML += `<span style="color:var(--red)">Network error: ${err.message}</span>`;
-  } finally {
-    if(copyBtn) copyBtn.disabled = false;
-  }
-}
 
 function openClearModal(){closeModals();document.getElementById('clear-modal').classList.add('open');}
 function closeModals(){document.querySelectorAll('.modal-bg').forEach(m=>m.classList.remove('open'));}
@@ -7364,8 +7290,11 @@ function deleteSelectedTrade(){
     return;
   }
   if(btn){btn.dataset.confirming='';btn.textContent='✕ delete';btn.style.color='';btn.style.fontWeight='';}
+  const deletingId = selectedTradeId;
   trades=trades.filter(x=>x.id!==selectedTradeId);
   selectedTradeId=null;
+  deleteScreenshotsForTrade(deletingId);
+  deleteCsvForTrade(deletingId);
   // Reset chart
   if(lwConnectorSeries&&lwChart){try{lwChart.removeSeries(lwConnectorSeries);}catch(e){}}lwConnectorSeries=null;
   if(lwChart){try{lwChart.remove();}catch(e){}lwChart=null;lwCandleSeries=null;}
@@ -8235,6 +8164,8 @@ function submitEodForm(){
     document.getElementById('eod-popup-count-label').textContent =
       dayEods.length ? `${dayEods.length} EOD${dayEods.length>1?'s':''} logged` : 'No EODs yet for this day';
   }
+  // Refresh preview panel with updated data
+  openEodPreview(savedEodId);
   toast(_eodEditingId ? 'EOD updated.' : 'EOD saved.');
 }
 
@@ -8253,6 +8184,9 @@ function deleteEod(){
   deleteScreenshotsForEod(deletingId);
   _eodFormScreenshots = [];
   closeEodForm();
+  // Close preview panel since the EOD no longer exists
+  const prevPanel = document.getElementById('eod-preview-bg');
+  if(prevPanel) prevPanel.style.display = 'none';
   renderEodCalendar();
   if(_eodPopupDate){
     renderEodPopupList(_eodPopupDate);
@@ -8273,6 +8207,7 @@ function quickDeleteEod(id){
     return;
   }
   eods = eods.filter(x=>x.id!==id);
+  deleteScreenshotsForEod(id);
   saveEods(eods);
   renderEodCalendar();
   if(_eodPopupDate){
@@ -8472,7 +8407,7 @@ function insertTemplate(tmplId){
 }
 
 function openSettingsTab(tab){
-  ['cloud','accounts','appearance','tags','templates','data','migration'].forEach(t=>{
+  ['cloud','accounts','appearance','tags','templates','data'].forEach(t=>{
     const btn   = document.getElementById('stab-'+t);
     const panel = document.getElementById('stab-panel-'+t);
     const active = t===tab;
@@ -9179,9 +9114,9 @@ function submitPbForm(){
   }
   closePbForm();
   renderPlaybook();
+  // Refresh view popup if it's open with the same play
+  if(play && play.id) openPbView(play.id);
 }
-
-function deletePbPlay(){
   if(!isOwner()){toast('Read-only — log in to delete.',true);return;}
   if(!_pbEditId) return;
   if(!confirm('Delete this play? This cannot be undone.')) return;
@@ -9190,6 +9125,9 @@ function deletePbPlay(){
   savePlaybook(playbook);
   deleteScreenshotsForPlay(_delId);
   closePbForm();
+  // Close view popup since the play no longer exists
+  const pbViewBg = document.getElementById('pb-view-bg');
+  if(pbViewBg) pbViewBg.classList.remove('open');
   renderPlaybook();
 }
 
