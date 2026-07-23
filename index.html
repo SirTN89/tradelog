@@ -9117,6 +9117,8 @@ function submitPbForm(){
   // Refresh view popup if it's open with the same play
   if(play && play.id) openPbView(play.id);
 }
+
+function deletePbPlay(){
   if(!isOwner()){toast('Read-only — log in to delete.',true);return;}
   if(!_pbEditId) return;
   if(!confirm('Delete this play? This cannot be undone.')) return;
