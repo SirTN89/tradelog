@@ -8542,34 +8542,27 @@ function submitEodForm(){
       if(rangeNYPM   != null) sibling.rangeNYPM    = rangeNYPM;
     });
   }
-  const _wasEdit = !!_eodEditingId;
   // Push screenshots to their own blob
   if(screenshots.length) pushScreenshotsForEod(savedEodId, screenshots);
-  else if(_eodEditingId) deleteScreenshotsForEod(savedEodId);
+  else if(_eodEditingId) deleteScreenshotsForEod(savedEodId); // all removed during edit
   // Restore screenshots in memory for current session (so tab still shows them)
   const eodInMem = eods.find(x=>x.id===savedEodId);
   if(eodInMem) eodInMem.screenshots = screenshots;
-  try {
-    saveEods(eods);
-  } catch(err) {
-    console.error('saveEods failed:', err);
-    toast('Save error — please try again.',true);
-  }
+  saveEods(eods);
   _eodFormScreenshots = [];
   closeEodForm();
-  try {
-    renderEodCalendar();
-    renderEodYearView();
-    if(_eodPopupDate){
-      renderEodPopupList(_eodPopupDate);
-      const dayEods = eods.filter(e=>e.date===_eodPopupDate);
-      document.getElementById('eod-popup-count-label').textContent =
-        dayEods.length ? `${dayEods.length} EOD${dayEods.length>1?'s':''} logged` : 'No EODs yet for this day';
-    }
-  } catch(err) {
-    console.error('EOD render error:', err);
+  renderEodCalendar();
+  renderEodYearView();
+  // Refresh the popup list if it's still open on the same date
+  if(_eodPopupDate){
+    renderEodPopupList(_eodPopupDate);
+    const dayEods = eods.filter(e=>e.date===_eodPopupDate);
+    document.getElementById('eod-popup-count-label').textContent =
+      dayEods.length ? `${dayEods.length} EOD${dayEods.length>1?'s':''} logged` : 'No EODs yet for this day';
   }
-  toast(_wasEdit ? 'EOD updated.' : 'EOD saved.');
+  // Refresh preview panel with updated data
+  openEodPreview(savedEodId);
+  toast(_eodEditingId ? 'EOD updated.' : 'EOD saved.');
 }
 
 function deleteEod(){
