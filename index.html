@@ -11088,10 +11088,10 @@ function applyMetaBundle(bundle){
   localStorage.setItem('tradelog_accounts_v1', JSON.stringify(bundle.accounts||[]));
   if(bundle.theme) localStorage.setItem('tradelog_theme', bundle.theme);
   // Handle old v4 bundles that still have trades/eods/playbook embedded
-  if(bundle.trades)   localStorage.setItem('tradelog_v2',                   JSON.stringify(bundle.trades));
-  if(bundle.eods)     localStorage.setItem('tradelog_eods_v1',              JSON.stringify(bundle.eods));
+  if(bundle.trades)   localStorage.setItem('tradelog_v2',                   JSON.stringify(stripScreenshots(bundle.trades)));
+  if(bundle.eods)     localStorage.setItem('tradelog_eods_v1',              JSON.stringify(stripScreenshots(bundle.eods)));
   if(bundle.eodNotes) localStorage.setItem('tradelog_eod_day_notes_v1',     JSON.stringify(bundle.eodNotes));
-  if(bundle.playbook) localStorage.setItem('tradelog_playbook_v1',          JSON.stringify(bundle.playbook));
+  if(bundle.playbook) localStorage.setItem('tradelog_playbook_v1',          JSON.stringify(stripScreenshots(bundle.playbook)));
 }
 
 function applyAfterPull(){
@@ -11225,29 +11225,16 @@ async function pullFromCloud(){
     else if(oldMeta) applyMetaBundle(oldMeta);
 
     if(tradesBlob?.trades)
-      localStorage.setItem('tradelog_v2', JSON.stringify(tradesBlob.trades));
+      localStorage.setItem('tradelog_v2', JSON.stringify(stripScreenshots(tradesBlob.trades)));
 
     if(eodsBlob?.eods){
-      const eodEntries = eodsBlob.eods;
-      for(const eod of eodEntries){
-        if(eod._hasScreenshots && !(eod.screenshots&&eod.screenshots.length)){
-          const ss = await pullScreenshotsForEod(eod.id);
-          if(ss) eod.screenshots = ss;
-        }
-      }
-      localStorage.setItem('tradelog_eods_v1', JSON.stringify(eodEntries));
+      // Store without screenshots in localStorage - screenshots live in blobs
+      localStorage.setItem('tradelog_eods_v1', JSON.stringify(stripScreenshots(eodsBlob.eods)));
     }
     if(eodsBlob?.eodNotes)
       localStorage.setItem('tradelog_eod_day_notes_v1', JSON.stringify(eodsBlob.eodNotes));
     if(pbBlob?.plays){
-      const plays = pbBlob.plays;
-      for(const play of plays){
-        if(play._hasScreenshots && !(play.screenshots&&play.screenshots.length)){
-          const ss = await pullScreenshotsForPlay(play.id);
-          if(ss) play.screenshots = ss;
-        }
-      }
-      localStorage.setItem('tradelog_playbook_v1', JSON.stringify(plays));
+      localStorage.setItem('tradelog_playbook_v1', JSON.stringify(stripScreenshots(pbBlob.plays)));
     }
 
     if(tmplBlob) localStorage.setItem(TMPL_KEY, JSON.stringify(tmplBlob));
