@@ -2362,7 +2362,7 @@ body.ro #sync-pill{opacity:0.4}
 
 
 <!-- Reminder form modal -->
-<div class="modal-bg" id="reminder-form-bg" style="z-index:600">
+<div class="modal-bg" id="reminder-form-bg" style="z-index:600" onclick="if(event.target===this){}">
   <div class="modal" style="width:480px;max-width:97vw;padding:0;display:flex;flex-direction:column;overflow:hidden">
     <div style="padding:16px 20px;border-bottom:0.5px solid var(--border2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
       <h3 id="reminder-form-title" style="font-size:14px;font-weight:600">New Reminder</h3>
@@ -11174,7 +11174,7 @@ function scheduleSync(){
   if(!isOwner()) return;
   setSyncPill('saving','Saving…');
   clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(()=>pushToCloud(true), 2000);
+  _syncTimer = setTimeout(()=>pushToCloud(true), 300);
 }
 
 async function pushToCloud(silent=false){
@@ -11234,11 +11234,11 @@ async function pullFromCloud(){
 
     if(tradesBlob?.trades)
       localStorage.setItem('tradelog_v2', JSON.stringify(tradesBlob.trades));
+
     if(eodsBlob?.eods){
-      // Pull screenshots back into EOD entries
       const eodEntries = eodsBlob.eods;
       for(const eod of eodEntries){
-        if(eod._hasScreenshots){
+        if(eod._hasScreenshots && !(eod.screenshots&&eod.screenshots.length)){
           const ss = await pullScreenshotsForEod(eod.id);
           if(ss) eod.screenshots = ss;
         }
@@ -11248,10 +11248,9 @@ async function pullFromCloud(){
     if(eodsBlob?.eodNotes)
       localStorage.setItem('tradelog_eod_day_notes_v1', JSON.stringify(eodsBlob.eodNotes));
     if(pbBlob?.plays){
-      // Pull screenshots back into playbook plays
       const plays = pbBlob.plays;
       for(const play of plays){
-        if(play._hasScreenshots){
+        if(play._hasScreenshots && !(play.screenshots&&play.screenshots.length)){
           const ss = await pullScreenshotsForPlay(play.id);
           if(ss) play.screenshots = ss;
         }
@@ -11278,13 +11277,13 @@ function netlifyConfigured(){ return isHosted(); }
 
 // Patch save functions to trigger auto-sync
 const _origSaveTrades   = saveTrades;
-saveTrades   = (t)=>{ _origSaveTrades(t);   scheduleSync(); };
+saveTrades   = (t)=>{ _origSaveTrades(t);   pushToCloud(true); };
 
 const _origSaveEods     = saveEods;
-saveEods     = (e)=>{ _origSaveEods(e);     scheduleSync(); };
+saveEods     = (e)=>{ _origSaveEods(e);     pushToCloud(true); };
 
 const _origSavePlaybook = savePlaybook;
-savePlaybook = (p)=>{ _origSavePlaybook(p); scheduleSync(); };
+savePlaybook = (p)=>{ _origSavePlaybook(p); pushToCloud(true); };
 
 const _origSaveSettings = saveSettings;
 saveSettings = (s)=>{ _origSaveSettings(s); scheduleSync(); };
@@ -11293,7 +11292,7 @@ const _origSaveAccounts = saveAccounts;
 saveAccounts = (a)=>{ _origSaveAccounts(a); scheduleSync(); };
 
 const _origSaveEodDayNotes = saveEodDayNotes;
-saveEodDayNotes = (n)=>{ _origSaveEodDayNotes(n); scheduleSync(); };
+saveEodDayNotes = (n)=>{ _origSaveEodDayNotes(n); pushToCloud(true); };
 
 // ── Fees inline edit ──────────────────────────────────────────────────────────
 function editFeesInline(){
@@ -11534,7 +11533,13 @@ function toggleTradeAccount(acct){
   toast('Account updated.');
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ── Push on page unload ────────────────────────────────────────────────────────
+window.addEventListener('beforeunload', (e)=>{
+  if(_syncTimer && isOwner() && isHosted()){
+    clearTimeout(_syncTimer);
+    pushToCloud(true); // fire but can't guarantee completion
+  }
+});
 loadChartSettings(true);
 applyTheme(localStorage.getItem('tradelog_theme') || 'dark');
 applyAppearance();
