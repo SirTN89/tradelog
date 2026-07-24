@@ -10982,22 +10982,15 @@ async function blobGet(key){
   return await resp.json();
 }
 
-async function blobPut(key, data, timeoutMs=8000){
+async function blobPut(key, data){
   if(!isOwner()){ throw new Error('Read-only: please log in to save changes.'); }
-  const controller = new AbortController();
-  const timer = setTimeout(()=>controller.abort(), timeoutMs);
-  try{
-    const resp = await fetch(`/api/sync?key=${encodeURIComponent(key)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${getWriteToken()}` },
-      body: JSON.stringify(data),
-      signal: controller.signal,
-    });
-    if(resp.status===401) throw new Error('Session expired — please log in again.');
-    if(!resp.ok) throw new Error(`PUT ${key} failed (${resp.status})`);
-  } finally {
-    clearTimeout(timer);
-  }
+  const resp = await fetch(`/api/sync?key=${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${getWriteToken()}` },
+    body: JSON.stringify(data),
+  });
+  if(resp.status===401) throw new Error('Session expired — please log in again.');
+  if(!resp.ok) throw new Error(`PUT ${key} failed (${resp.status})`);
 }
 
 async function blobDelete(key){
@@ -11016,7 +11009,7 @@ async function pushScreenshotsForTrade(tradeId, screenshots){
   if(!isHosted()||location.hostname==='localhost') return;
   if(!screenshots||!screenshots.length) return;
   try{ await blobPut(`screenshots/trades/${tradeId}`, { screenshots }, 20000); }
-  catch(e){ console.warn('SS push failed:', e.message); toast('Screenshot upload failed — try saving again.',true); }
+  catch(e){ console.warn('SS push failed:', e.message); }
 }
 
 async function pullScreenshotsForTrade(tradeId){
@@ -11036,7 +11029,7 @@ async function pushScreenshotsForEod(eodId, screenshots){
   if(!isHosted()||location.hostname==='localhost') return;
   if(!screenshots||!screenshots.length) return;
   try{ await blobPut(`screenshots/eod/${eodId}`, { screenshots }, 20000); }
-  catch(e){ console.warn('EOD SS push failed:', e.message); toast('Screenshot upload failed — try saving again.',true); }
+  catch(e){ console.warn('EOD SS push failed:', e.message); }
 }
 
 async function pullScreenshotsForEod(eodId){
@@ -11118,7 +11111,7 @@ async function pushScreenshotsForPlay(playId, screenshots){
   if(!isHosted()||location.hostname==='localhost') return;
   if(!screenshots||!screenshots.length) return;
   try{ await blobPut(`screenshots/playbook/${playId}`, { screenshots }, 20000); }
-  catch(e){ console.warn('Play SS push failed:', e.message); toast('Screenshot upload failed — try saving again.',true); }
+  catch(e){ console.warn('Play SS push failed:', e.message); }
 }
 async function pullScreenshotsForPlay(playId){
   if(!isHosted()||location.hostname==='localhost') return null;
@@ -11173,7 +11166,7 @@ function scheduleSync(){
   if(!isOwner()) return;
   setSyncPill('saving','Saving…');
   clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(()=>pushToCloud(true), 300);
+  _syncTimer = setTimeout(()=>pushToCloud(true), 2000);
 }
 
 async function pushToCloud(silent=false){
@@ -11281,13 +11274,13 @@ function netlifyConfigured(){ return isHosted(); }
 let _pushInProgress = false;
 
 const _origSaveTrades   = saveTrades;
-saveTrades   = (t)=>{ _origSaveTrades(t);   pushToCloud(true); };
+saveTrades   = (t)=>{ _origSaveTrades(t);   scheduleSync(); };
 
 const _origSaveEods     = saveEods;
-saveEods     = (e)=>{ _origSaveEods(e);     pushToCloud(true); };
+saveEods     = (e)=>{ _origSaveEods(e);     scheduleSync(); };
 
 const _origSavePlaybook = savePlaybook;
-savePlaybook = (p)=>{ _origSavePlaybook(p); pushToCloud(true); };
+savePlaybook = (p)=>{ _origSavePlaybook(p); scheduleSync(); };
 
 const _origSaveSettings = saveSettings;
 saveSettings = (s)=>{ _origSaveSettings(s); scheduleSync(); };
@@ -11296,7 +11289,7 @@ const _origSaveAccounts = saveAccounts;
 saveAccounts = (a)=>{ _origSaveAccounts(a); scheduleSync(); };
 
 const _origSaveEodDayNotes = saveEodDayNotes;
-saveEodDayNotes = (n)=>{ _origSaveEodDayNotes(n); pushToCloud(true); };
+saveEodDayNotes = (n)=>{ _origSaveEodDayNotes(n); scheduleSync(); };
 
 // ── Fees inline edit ──────────────────────────────────────────────────────────
 function editFeesInline(){
