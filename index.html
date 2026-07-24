@@ -2456,7 +2456,7 @@ function isOwner(){ return !!getWriteToken(); }
 // ── Storage ──────────────────────────────────────────────────────────────────
 const KEY='tradelog_v2';
 function loadTrades(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch{return[];}}
-function saveTrades(t){localStorage.setItem(KEY,JSON.stringify(t));updateStoragePill();}
+function saveTrades(t){localStorage.setItem(KEY,JSON.stringify(stripScreenshots(t)));updateStoragePill();}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 
 let trades=loadTrades();
@@ -7697,7 +7697,7 @@ function deleteSelectedTrade(){
 const EOD_KEY = 'tradelog_eods_v1';
 const EOD_DAY_NOTES_KEY = 'tradelog_eod_day_notes_v1';
 function loadEods(){ try{ return JSON.parse(localStorage.getItem(EOD_KEY))||[]; }catch{ return []; } }
-function saveEods(e){ localStorage.setItem(EOD_KEY, JSON.stringify(e)); updateStoragePill(); }
+function saveEods(e){ localStorage.setItem(EOD_KEY, JSON.stringify(stripScreenshots(e))); updateStoragePill(); }
 function loadEodDayNotes(){ try{ return JSON.parse(localStorage.getItem(EOD_DAY_NOTES_KEY))||{}; }catch{ return {}; } }
 function saveEodDayNotes(n){ localStorage.setItem(EOD_DAY_NOTES_KEY, JSON.stringify(n)); }
 
@@ -8548,21 +8548,25 @@ function submitEodForm(){
   // Restore screenshots in memory for current session (so tab still shows them)
   const eodInMem = eods.find(x=>x.id===savedEodId);
   if(eodInMem) eodInMem.screenshots = screenshots;
-  saveEods(eods);
+  const _wasEdit = !!_eodEditingId;
+  try {
+    saveEods(eods);
+  } catch(e) { console.error('saveEods error:', e); }
   _eodFormScreenshots = [];
+  // Always close the form, no matter what
   closeEodForm();
-  renderEodCalendar();
-  renderEodYearView();
-  // Refresh the popup list if it's still open on the same date
-  if(_eodPopupDate){
-    renderEodPopupList(_eodPopupDate);
-    const dayEods = eods.filter(e=>e.date===_eodPopupDate);
-    document.getElementById('eod-popup-count-label').textContent =
-      dayEods.length ? `${dayEods.length} EOD${dayEods.length>1?'s':''} logged` : 'No EODs yet for this day';
-  }
-  // Refresh preview panel with updated data
-  openEodPreview(savedEodId);
-  toast(_eodEditingId ? 'EOD updated.' : 'EOD saved.');
+  try {
+    renderEodCalendar();
+    renderEodYearView();
+    if(_eodPopupDate){
+      renderEodPopupList(_eodPopupDate);
+      const dayEods = eods.filter(e=>e.date===_eodPopupDate);
+      document.getElementById('eod-popup-count-label').textContent =
+        dayEods.length ? `${dayEods.length} EOD${dayEods.length>1?'s':''} logged` : 'No EODs yet for this day';
+    }
+    openEodPreview(savedEodId);
+  } catch(e) { console.error('render error:', e); }
+  toast(_wasEdit ? 'EOD updated.' : 'EOD saved.');
 }
 
 function deleteEod(){
@@ -9382,7 +9386,7 @@ function renderDtDays(ft, el){
 // ── Playbook ──────────────────────────────────────────────────────────────────
 const PB_KEY = 'tradelog_playbook_v1';
 function loadPlaybook(){ try{ return JSON.parse(localStorage.getItem(PB_KEY))||[]; }catch{ return []; } }
-function savePlaybook(p){ localStorage.setItem(PB_KEY, JSON.stringify(p)); updateStoragePill(); scheduleSync(); }
+function savePlaybook(p){ localStorage.setItem(PB_KEY, JSON.stringify(stripScreenshots(p))); updateStoragePill(); scheduleSync(); }
 let playbook = loadPlaybook();
 
 let _pbEditId = null;
@@ -11531,6 +11535,19 @@ window.addEventListener('beforeunload', (e)=>{
     return e.returnValue;
   }
 });
+// ── One-time cleanup: strip screenshots from localStorage (they live in blobs) ─
+(()=>{
+  try{
+    const eKey='tradelog_eods_v1', tKey='tradelog_v2', pKey='tradelog_playbook_v1';
+    const e=JSON.parse(localStorage.getItem(eKey)||'[]');
+    const t=JSON.parse(localStorage.getItem(tKey)||'[]');
+    const p=JSON.parse(localStorage.getItem(pKey)||'[]');
+    if(e.some(x=>x.screenshots&&x.screenshots.length)) localStorage.setItem(eKey,JSON.stringify(stripScreenshots(e)));
+    if(t.some(x=>x.screenshots&&x.screenshots.length)) localStorage.setItem(tKey,JSON.stringify(stripScreenshots(t)));
+    if(p.some(x=>x.screenshots&&x.screenshots.length)) localStorage.setItem(pKey,JSON.stringify(stripScreenshots(p)));
+  }catch(e){}
+})();
+
 loadChartSettings(true);
 applyTheme(localStorage.getItem('tradelog_theme') || 'dark');
 applyAppearance();
