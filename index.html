@@ -9546,9 +9546,12 @@ function renderPlaybook(){
   if(!playbook.length){ gallery.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
   gallery.innerHTML=playbook.map(p=>{
-    const img=p.screenshots&&p.screenshots.length
+    const hasImg = p.screenshots&&p.screenshots.length;
+    const img = hasImg
       ?`<img src="${p.screenshots[0]}" class="pb-card-img" loading="lazy">`
-      :`<div class="pb-card-img-placeholder">📋</div>`;
+      : p._hasScreenshots
+        ?`<div class="pb-card-img-placeholder" id="pb-thumb-${p.id}" data-load-id="${p.id}">📋</div>`
+        :`<div class="pb-card-img-placeholder">📋</div>`;
     const tags=(p.tags||[]).map(t=>`<span class="pb-tag">${t}</span>`).join('');
     return`<div class="pb-card" onclick="openPbView('${p.id}')">
       ${img}
@@ -9559,6 +9562,19 @@ function renderPlaybook(){
       </div>
     </div>`;
   }).join('');
+  // Lazy-load thumbnails for plays that have screenshots in blobs
+  if(isHosted() && location.hostname!=='localhost'){
+    document.querySelectorAll('[data-load-id]').forEach(async el=>{
+      const id = el.dataset.loadId;
+      const play = playbook.find(p=>p.id===id);
+      if(!play) return;
+      const ss = await pullScreenshotsForPlay(id);
+      if(ss&&ss.length){
+        play.screenshots = ss;
+        el.outerHTML = `<img src="${ss[0]}" class="pb-card-img" loading="lazy">`;
+      }
+    });
+  }
 }
 
 let _pbViewId=null;
