@@ -8566,7 +8566,6 @@ function submitEodForm(){
       document.getElementById('eod-popup-count-label').textContent =
         dayEods.length ? `${dayEods.length} EOD${dayEods.length>1?'s':''} logged` : 'No EODs yet for this day';
     }
-    setTimeout(()=>openEodPreview(savedEodId), 100);
   } catch(err) {
     console.error('EOD render error:', err);
   }
@@ -11179,6 +11178,7 @@ function scheduleSync(){
 
 async function pushToCloud(silent=false){
   if(!isHosted()){ if(!silent) toast('Cloud sync only works when hosted on Netlify.',true); return; }
+  _pushInProgress = true;
   setSyncPill('saving','Syncing…');
   try{
     // Push each category as its own blob
@@ -11207,6 +11207,8 @@ async function pushToCloud(silent=false){
   }catch(err){
     setSyncPill('error','Sync failed');
     if(!silent) toast('Sync failed: '+err.message, true);
+  } finally {
+    _pushInProgress = false;
   }
 }
 
@@ -11276,6 +11278,8 @@ function testNetlifySync(){ pushToCloud(false); }
 function netlifyConfigured(){ return isHosted(); }
 
 // Patch save functions to trigger auto-sync
+let _pushInProgress = false;
+
 const _origSaveTrades   = saveTrades;
 saveTrades   = (t)=>{ _origSaveTrades(t);   pushToCloud(true); };
 
@@ -11535,9 +11539,10 @@ function toggleTradeAccount(acct){
 
 // ── Push on page unload ────────────────────────────────────────────────────────
 window.addEventListener('beforeunload', (e)=>{
-  if(_syncTimer && isOwner() && isHosted()){
-    clearTimeout(_syncTimer);
-    pushToCloud(true); // fire but can't guarantee completion
+  if(_pushInProgress && isOwner() && isHosted()){
+    e.preventDefault();
+    e.returnValue = 'Changes are still saving to cloud. Are you sure you want to leave?';
+    return e.returnValue;
   }
 });
 loadChartSettings(true);
